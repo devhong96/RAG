@@ -1,0 +1,40 @@
+{
+  "name": "chromadb-example",
+  "version": "1.0.0",
+  "description": "ChromaDB + Ollama(bge-m3) 학습용 예제 모음",
+  "scripts": {
+    "db": "C=$(which -a chroma | grep -v node_modules | head -1); ${C:-chroma} run --path ./chroma-data",
+    "server": "tsx src/server/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "ex:01-connection": "tsx src/examples/01-connection.ts",
+    "ex:02-crud": "tsx src/examples/02-basic-crud.ts",
+    "ex:03-embedding-timing": "tsx src/examples/03-embedding-timing.ts",
+    "ex:04-persistence": "tsx src/examples/04-persistence.ts",
+    "ex:05-similarity-search": "tsx src/examples/05-similarity-search.ts",
+    "ex:06-chunking": "tsx src/examples/06-chunking.ts",
+    "ex:07-hybrid-eval": "tsx src/examples/07-hybrid-eval.ts",
+    "ex:08-rag": "tsx src/examples/08-rag.ts",
+    "ex:09-rerank": "tsx src/examples/09-rerank.ts",
+    "ex:10-self-query": "tsx src/examples/10-self-query.ts",
+    "ex:11-graph-rag": "tsx src/examples/11-graph-rag.ts",
+    "reset": "tsx src/examples/reset.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.1",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.9",
+    "@langchain/textsplitters": "^1.0.1",
+    "@xenova/transformers": "^2.17.2",
+    "chromadb": "^3.5.0",
+    "express": "^5.2.1"
+  }
+}

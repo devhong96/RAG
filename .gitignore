@@ -1,0 +1,18 @@
+node_modules
+dist/
+
+# Chroma 로컬 DB (재생성 가능한 데이터)
+chroma-data/
+chroma/
+
+# 환경변수
+.env
+.env.local
+
+.DS_Store
+
+# 재랭킹 모델 캐시 (강의 29~)
+.transformers-cache/
+
+# IDE 설정
+.idea/

@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+
+    "strict": true,
+    // 배열/객체 인덱싱 결과를 undefined 일 수 있는 것으로 취급한다.
+    // result.embeddings?.[0] 같은 코드를 강제해서 런타임 오류를 줄인다.
+    "noUncheckedIndexedAccess": true,
+    // import type 을 명시하게 해서 런타임 import 와 타입 import 를 구분한다.
+    "verbatimModuleSyntax": true,
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+
+    // tsx 로 바로 실행하므로 컴파일 산출물은 만들지 않는다.
+    // 타입 검사만: npm run typecheck
+    "noEmit": true
+  },
+  "include": ["src"]
+}
