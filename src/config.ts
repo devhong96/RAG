@@ -18,8 +18,8 @@ export const config = {
     url: process.env.OLLAMA_URL ?? "http://localhost:11434",
     /** 임베딩 모델. bge-m3 는 1024 차원의 다국어 모델. */
     model: process.env.OLLAMA_MODEL ?? "bge-m3",
-    /** 답변 생성용 LLM. 강의 23 부터 사용. */
-    chatModel: process.env.OLLAMA_CHAT_MODEL ?? "llama3.2",
+    /** 답변 생성용 LLM. */
+    chatModel: process.env.OLLAMA_CHAT_MODEL ?? "gemma4:26b",
   },
   /** 재랭킹용 크로스 인코더. 강의 29 부터 사용. */
   reranker: {
