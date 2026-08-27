@@ -30,6 +30,12 @@ export const config = {
   server: {
     port: Number(process.env.PORT ?? 3000),
   },
+  /** Neo4j (Graph DB). */
+  neo4j: {
+    url: process.env.NEO4J_URL ?? "bolt://localhost:7687",
+    user: process.env.NEO4J_USER ?? "neo4j",
+    password: process.env.NEO4J_PASSWORD ?? "password123!",
+  },
 } as const
 
 /** bge-m3 가 만들어내는 벡터의 차원 수. */

@@ -16,3 +16,6 @@ chroma/
 
 # IDE 설정
 .idea/
+
+# OCR 모델 데이터
+*.traineddata

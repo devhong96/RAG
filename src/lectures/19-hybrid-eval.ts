@@ -19,7 +19,7 @@ const EVAL_SET: readonly EvalCase[] = [
   { query: "도심 자전거 통근", expectedId: "a-4" },
 ]
 
-await runExample("07 하이브리드 검색과 평가", async () => {
+await runExample("[19강] 하이브리드 검색 + Top-K/MRR 평가", async () => {
   const collection = await resetCollection("hybrid-eval")
   // [자바 노트] .map() 은 자바 스트림의 map 과 같다.
   //            다만 TS 배열은 stream()/collect() 없이 바로 체이닝된다.

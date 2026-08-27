@@ -24,7 +24,7 @@ const EVAL_SET: readonly EvalCase[] = [
   { query: "자전거 도로 안전", expectedId: "a-8" },
 ]
 
-await runExample("09 재랭킹", async () => {
+await runExample("[29~30강] 크로스 인코더 2단계 검색 (재랭킹)", async () => {
   const collection = await resetCollection("rerank-articles")
   await collection.upsert({
     ids: ARTICLES.map((a) => a.id),

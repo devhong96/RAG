@@ -7,7 +7,7 @@ import { resetCollection, runExample } from "../lib/chroma.js"
  *   documents / queryTexts      → 임베딩 함수가 자동 호출됨
  *   embeddings / queryEmbeddings → 임베딩 함수는 호출되지 않음
  */
-await runExample("03 임베딩 함수 호출 시점", async () => {
+await runExample("[10강] 임베딩 함수 호출 시점 확인", async () => {
   const collection = await resetCollection("embedding-timing")
 
   await collection.upsert({

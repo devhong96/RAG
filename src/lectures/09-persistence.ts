@@ -12,7 +12,7 @@ import { openCollection, runExample } from "../lib/chroma.js"
  *
  * 서버를 껐다 켠 뒤(`npm run db`) 다시 실행해도 숫자가 이어지면 영속성이 동작하는 것이다.
  */
-await runExample("04 영속성", async () => {
+await runExample("[09강] 서버 재시작 후 데이터 영속성", async () => {
   const collection = await openCollection("persistence")
 
   const before = await collection.count()

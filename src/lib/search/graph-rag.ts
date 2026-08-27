@@ -1,14 +1,17 @@
 import type { Collection } from "chromadb"
 import { rerankScores, type RerankedHit } from "./rerank.js"
-import { KnowledgeGraph } from "../graph/knowledge-graph.js"
+import { KnowledgeGraph, type Triple } from "../graph/knowledge-graph.js"
+import type { Neo4jKnowledgeGraph } from "../graph/neo4j-graph.js"
 import { chatComplete, type ChatMessage } from "../llm.js"
+
+export type GraphProvider = KnowledgeGraph | Neo4jKnowledgeGraph
 
 /**
  * Graph-RAG + Re-ranker 2단계 파이프라인.
  *
  * 1단계 (하이브리드 후보 검색):
  *   - 벡터 검색(Chroma): 문맥/의미 기반 유사 텍스트 청크 수집
- *   - 그래프 탐색(KnowledgeGraph): 질문 내 엔티티 중심의 다단계(Multi-hop) 연결 사실(Facts) 수집
+ *   - 그래프 탐색(KnowledgeGraph/Neo4j): 질문 내 엔티티 중심의 다단계(Multi-hop) 연결 사실(Facts) 수집
  *   - 두 출처의 후보를 하나의 풀로 병합
  *
  * 2단계 (크로스 인코더 재랭킹):
@@ -37,7 +40,7 @@ export interface GraphRAGOptions {
  */
 export async function searchGraphRAG(
   collection: Collection,
-  graph: KnowledgeGraph,
+  graph: GraphProvider,
   query: string,
   options: GraphRAGOptions = {},
 ): Promise<GraphRAGHit[]> {
@@ -62,7 +65,7 @@ export async function searchGraphRAG(
     .filter((c) => c.text.length > 0)
 
   // 1-B. 지식 그래프 탐색으로 흩어진 관계 팩트(Fact) 수집
-  const graphTriples = graph.search(query, graphDepth)
+  const graphTriples = await graph.search(query, graphDepth)
   const graphFacts = KnowledgeGraph.triplesToFacts(graphTriples)
 
   const graphPool: GraphRAGCandidate[] = graphFacts.map((fact, i) => ({
@@ -109,7 +112,7 @@ export function buildGraphRAGContext(hits: GraphRAGHit[]): string {
  */
 export async function answerWithGraphRAG(
   collection: Collection,
-  graph: KnowledgeGraph,
+  graph: GraphProvider,
   question: string,
   options: GraphRAGOptions = {},
 ): Promise<{ answer: string; context: string; hits: GraphRAGHit[] }> {

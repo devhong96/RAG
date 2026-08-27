@@ -1,7 +1,7 @@
 import { client, embedder, runExample } from "../lib/chroma.js"
 import { config } from "../config.js"
 
-await runExample("01 연결 확인", async () => {
+await runExample("[07~08강] Chroma/Ollama 연결 점검", async () => {
   const heartbeat = await client.heartbeat()
   console.log(`Chroma  ${config.chroma.url}  OK  (heartbeat=${heartbeat})`)
 

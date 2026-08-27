@@ -104,25 +104,38 @@ Ollama  http://localhost:11434  OK  (모델=bge-m3, 차원=1024)
 
 각 터미널에서 `Ctrl+C`. Chroma 는 껐다 켜도 데이터가 `chroma-data/` 에 남는다.
 
-## 예제
+## 강의 실습 예제 (`src/lectures/`)
 
-| 스크립트 | 강의 | 내용 |
-|---|---|---|
-| `npm run ex:01-connection` | 7~8 | Chroma/Ollama 연결 점검 |
-| `npm run ex:02-crud` | 11~12 | add / get / where / update / delete |
-| `npm run ex:03-embedding-timing` | 10 | 임베딩 함수 호출 시점 |
-| `npm run ex:04-persistence` | 9 | 서버 재시작 후에도 남는가 |
-| `npm run ex:05-similarity-search` | 13~14 | 의미 검색과 거리 |
-| `npm run ex:06-chunking` | 15·20·26·27 | 청킹 전략 6종 비교 |
-| `npm run ex:07-hybrid-eval` | 19 | 하이브리드 검색 + Top-K/MRR |
-| `npm run ex:08-rag` | 23~24 | 인제스트 → 검색 → 생성 |
-| `npm run ex:09-rerank` | 29~30 | 크로스 인코더 2단계 검색 |
-| `npm run ex:10-self-query` | 31~32 | 질의 재작성 · HyDE · Self-Query |
-| `npm run ex:11-graph-rag` | — | 지식 그래프(Graph) + 벡터 + 리랭커 (GraphRAG) |
-| `npm run server` | 22~24 | Express 백엔드 (:3000) |
-| `npm start` | — | 자유 실습 (`src/index.ts`) |
-| `npm run reset` | — | 모든 컬렉션 삭제 |
-| `npm run typecheck` | — | 타입 검사 |
+인프런 강의 순서(회차 번호)와 1:1로 일치하도록 파일명과 순서가 정렬되어 있습니다.
+
+| 강의 회차 | 스크립트 | 소스 파일 | 내용 |
+|---|---|---|---|
+| 7~8강 | `npm run lec:07-08` | `07-08-connection.ts` | Chroma/Ollama 연결 점검 |
+| 9강 | `npm run lec:09` | `09-persistence.ts` | 서버 재시작 후에도 데이터가 남는가 |
+| 10강 | `npm run lec:10` | `10-embedding-timing.ts` | 임베딩 함수 호출 시점 확인 |
+| 11~12강 | `npm run lec:11-12` | `11-12-basic-crud.ts` | 기본 CRUD (add / get / where / update / delete) |
+| 13~14강 | `npm run lec:13-14` | `13-14-similarity-search.ts` | 의미 검색과 코사인 거리 |
+| 15·20·26·27강 | `npm run lec:15` | `15-chunking.ts` | 청킹 전략 6종 비교 (Fixed, Structural, Semantic) |
+| 19강 | `npm run lec:19` | `19-hybrid-eval.ts` | 하이브리드 검색 + Top-K/MRR 정량 평가 |
+| 22~24강 | `npm run server` | `src/server/index.ts` | Express RAG 백엔드 (:3000) |
+| 23~24강 | `npm run lec:23-24` | `23-24-rag.ts` | RAG 전체 파이프라인 (인제스트 → 검색 → 생성) |
+| 29~30강 | `npm run lec:29-30` | `29-30-rerank.ts` | 크로스 인코더 2단계 재랭킹 검색 |
+| 31~32강 | `npm run lec:31-32` | `31-32-self-query.ts` | 질의 재작성 · HyDE · Self-Querying |
+| — | `npm run reset` | `reset.ts` | 모든 컬렉션 초기화 |
+| — | `npm run typecheck` | — | 타입 검사 |
+
+*(기존 `npm run ex:01-connection` ~ `ex:10-self-query` 별칭도 호환성을 위해 유지됩니다)*
+
+## Graph DB & OCR 스크립트
+
+| 도메인 | 스크립트 | 소스 파일 | 내용 |
+|---|---|---|---|
+| **Graph DB** | `npm run graph:seed` | `src/graph-db/seed.ts` | Neo4j 노드/엣지 및 Chroma 청크 적재 |
+| **Graph DB** | `npm run graph:search` | `src/graph-db/search.ts` | GraphRAG 다단계 질의 및 답변 생성 |
+| **Graph DB** | `npm run graph:status` | `src/graph-db/status.ts` | Neo4j 그래프 노드/관계 현황 조회 |
+| **Graph DB** | `npm run graph:in-memory` | `src/graph-db/in-memory.ts` | 경량 인메모리 지식 그래프 실습 |
+| **OCR** | `npm run ocr:parse` | `src/ocr/parse.ts` | 이미지 문자 추출 & LLM 마크다운/표 복원 |
+| **OCR** | `npm run ocr:search` | `src/ocr/search.ts` | 복원 문서 벡터 적재 & RAG 질의응답 |
 
 ## 엔드포인트 (`npm run server`)
 
@@ -246,12 +259,109 @@ Recall@5 100%, MRR 1 이 나와서 재랭킹과 차이가 없었다. 그건 크�
 > 다시 `get` 해야 한다 — 그 함수는 `include: ["documents"]` 만 받아 오므로 결과에
 > `distance` 와 `metadata` 가 없고, `buildContext` 가 쓰는 관련도 표시가 그대로는 안 맞는다.
 
+## Graph DB & OCR 파이프라인
+
+단순 청킹과 단일 벡터 검색의 한계를 보완하기 위한 확장 파이프라인이다.
+
+---
+
+### 1. Graph DB (Neo4j) + GraphRAG (`src/graph-db/`)
+
+순수 벡터 검색(Bi-Encoder)은 개별 청크 단위의 의미적 유사도만 본다. 따라서 **"A -> B -> C"** 처럼 여러 문서 조각에 걸쳐 파편화된 **다단계 관계(Multi-hop)**를 질의할 때 중요한 중간 다리 청크를 놓치기 쉽다.
+
+Neo4j는 개체(Node)와 관계(Edge)를 트리플(주어-술어-목적어) 형태로 영속화하고, Cypher 쿼리를 통해 n-hop 관계망을 찾아내어 벡터 검색 후보와 결합한 후 크로스 인코더로 정밀 재정렬한다.
+
+```
+사용자 복합 질문
+  │
+  ├─ (1) Chroma 벡터 검색 ────> 의미적 유사 본문 청크 후보 수집
+  │
+  ├─ (2) Neo4j Cypher 탐색 ───> 질문 내 엔티티 기준 n-hop 관계(트리플 Fact) 탐색
+  │                              MATCH path = (start:Entity)-[*1..2]-(target:Entity)
+  │
+  ├─ (3) 후보군 통합 ─────────> [문서 청크] + [지식 그래프 Fact] 하나의 풀로 병합
+  │
+  ├─ (4) 2단계 재랭킹 ────────> 크로스 인코더(BGE-Reranker)로 질문 관련도 정밀 채점
+  │                              점수 내림차순 상위 Top-K 추출
+  │
+  └─ (5) LLM 생성 ────────────> 지식 관계망과 문서 본문이 융합된 프롬프트로 최종 답변
+```
+
+* **분리된 전용 스크립트**:
+  * `npm run graph:seed` (`src/graph-db/seed.ts`) — Neo4j 노드/엣지 및 Chroma 벡터 청크 적재
+  * `npm run graph:search` (`src/graph-db/search.ts`) — GraphRAG 다단계 질의 및 답변 생성
+  * `npm run graph:status` (`src/graph-db/status.ts`) — 현재 저장된 노드/관계 통계 및 엔티티 목록 조회
+* **모듈 코드**:
+  * `src/graph-db/client.ts` — `neo4j-driver` 기반 지식 그래프 클라이언트 (Cypher `MERGE`/`MATCH`)
+  * `src/graph-db/search-engine.ts` — 벡터 검색과 그래프 탐색 결과 통합 및 크로스 인코더 리랭킹
+* **Neo4j Docker 구동 및 브라우저 시각화**:
+  ```bash
+  # 컨테이너 실행 (최초 1회)
+  docker run -d --name neo4j-rag -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password123! neo4j:5
+  ```
+  * 웹 브라우저에서 `http://localhost:7474` 접속 (계정: `neo4j`, 비밀번호: `password123!`)
+  * Cypher 입력창에 `MATCH (n) RETURN n` 을 실행하면 저장된 엔티티 관계망을 그래픽으로 즉시 확인 가능
+
+---
+
+### 2. 한글 OCR + 지능형 문서/표 복원 파이프라인 (`src/ocr/`)
+
+사내 지식베이스(위키, 사규, 기술 규격서, 계약서)는 텍스트 파일이 아니라 **스캔된 PDF나 이미지(표/서식 포함)**로 존재하는 경우가 많다. 원시 OCR(Raw OCR)을 그대로 벡터 DB에 넣으면 오탈자(예: `AI` -> `시`, `DLC` -> `ㅁㄴ`)와 표 깨짐으로 인해 임베딩 유사도가 크게 훼손된다 (Garbage In, Garbage Out).
+
+이를 방지하기 위해 **"이미지 전처리 -> OCR -> LLM 마크다운/표 구조 복원 -> 시맨틱 청킹 -> 벡터 DB"** 4단계 파이프라인을 거친다.
+
+```
+스캔/문서 이미지 (PNG/JPG)
+  │
+  ├─ (1) 이미지 전처리 (sharp)
+  │        그레이스케일 변환, 대비(Contrast) 정규화, 선명화(Sharpening)로 문자 경계 강화
+  │
+  ├─ (2) 이중 언어 OCR (Tesseract.js)
+  │        한국어(kor) + 영어(eng) 광학 문자 인식
+  │        └→ 원시 텍스트 추출 (문자 깨짐 및 표 붕괴 상태)
+  │
+  ├─ (3) LLM 마크다운/표 구조 복원 (Llama 3.2)
+  │        문맥 기반 오탈자 자동 보정, 마크다운 표(| 헤더1 | 헤더2 |) 및 불릿 구조 복구
+  │        └→ 깨끗하게 정제된 고품질 마크다운 본문
+  │
+  ├─ (4) 구조 보존 청킹 (RecursiveCharacterTextSplitter)
+  │        마크다운 헤더(#, ##, ###) 및 표 단위를 인식하여 의미 단위로 분할
+  │
+  └─ (5) Chroma 벡터 DB 적재 및 질의응답 (RAG)
+           출처(source), 청크 인덱스 메타데이터와 함께 적재 후 유사도 검색 및 답변 생성
+```
+
+* **분리된 전용 스크립트**:
+  * `npm run ocr:parse` (`src/ocr/parse.ts`) — 이미지 문자 추출 및 LLM 마크다운/표 복원 단독 확인 (결과를 `scanned-doc-restored.md`로 저장)
+  * `npm run ocr:search` (`src/ocr/search.ts`) — 복원된 문서를 청킹하여 Chroma에 적재하고 질문에 대해 RAG 답변 생성
+* **모듈 코드**:
+  * `src/ocr/engine.ts` — `sharp` 전처리 및 `Tesseract.js` 한/영 OCR 엔진
+  * `src/ocr/pipeline.ts` — LLM 마크다운 정제 + 시맨틱 청킹 + ChromaDB 적재 파이프라인
+  * `src/ocr/sample-doc.ts` — 실습용 300DPI 고해상도 규격서 스캔 이미지 생성기
+
+---
+
 ## 구조
 
 ```
 src/
   config.ts                  설정 한곳에 (환경변수로 덮어쓰기 가능)
   data/                      예제용 문서
+  lectures/                  인프런 강의 실습 예제 (회차 번호와 1:1 일치)
+    07-08-connection.ts ~ 31-32-self-query.ts, reset.ts
+  graph-db/                  Graph DB (Neo4j) 클라이언트 및 스크립트
+    client.ts                Neo4j 지식 그래프 클라이언트 (Cypher)
+    search-engine.ts         GraphRAG 결합 검색 엔진
+    seed.ts                  [스크립트] 노드/관계 및 청크 적재 (npm run graph:seed)
+    search.ts                [스크립트] GraphRAG 질의/검색 (npm run graph:search)
+    status.ts                [스크립트] 그래프 현황/통계 (npm run graph:status)
+    in-memory.ts             인메모리 지식 그래프 실습 (npm run graph:in-memory)
+  ocr/                       한글 OCR & 문서 파싱
+    engine.ts                sharp 전처리 + Tesseract.js 한/영 OCR 엔진
+    pipeline.ts              LLM 마크다운 정제 + 시맨틱 청킹 + ChromaDB 적재
+    sample-doc.ts            실습용 고해상도 규격서 이미지 생성기
+    parse.ts                 [스크립트] 이미지 -> OCR -> LLM 마크다운 복원 (npm run ocr:parse)
+    search.ts                [스크립트] 복원 문서 벡터 적재 & 질의응답 (npm run ocr:search)
   lib/
     chroma.ts                공용 클라이언트 · 컬렉션 헬퍼 · 실행 래퍼
     ollama-embedding.ts      EmbeddingFunction 구현
@@ -262,9 +372,9 @@ src/
     chunking/                fixed · structural · semantic
     search/                  hybrid · rerank · rewrite · self-query · parent-child
     eval/                    Top-K · MRR · 지연시간
+    graph/                   지식 그래프 (인메모리 & Neo4j re-export)
   server/                    Express 앱 (강의 22~24)
-  examples/                  강의별 실행 스크립트
-  index.ts                   스크래치
+  index.ts                   스크래치 (npm start)
 chroma-data/                 Chroma SQLite (git 제외)
 docs/
   toc/curriculum.md          강의 목차 + 진행 현황판
@@ -306,6 +416,9 @@ local/                       강의가 준 것. 읽기만 한다
 CHROMA_URL=http://localhost:8000
 OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=bge-m3
+NEO4J_URL=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password123!
 ```
 
 ## 개념 메모

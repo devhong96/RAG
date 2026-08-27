@@ -18,7 +18,7 @@ const SCHEMA: Record<string, MetadataField> = {
   year: { type: "number", description: "발행 연도" },
 }
 
-await runExample("10 질의 재작성과 Self-Query", async () => {
+await runExample("[31~32강] 질의 재작성 · HyDE · Self-Query", async () => {
   const collection = await resetCollection("rag-with-meta")
   await collection.upsert({
     ids: ARTICLES.map((a) => a.id),

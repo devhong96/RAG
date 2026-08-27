@@ -6,7 +6,7 @@ import { semanticChunks } from "../lib/chunking/semantic.js"
 import { runExample } from "../lib/chroma.js"
 
 /** 청킹 전략 비교. (강의 15, 20, 26, 27) */
-await runExample("06 청킹 전략 비교", async () => {
+await runExample("[15·20·26·27강] 청킹 전략 비교", async () => {
   const body = longDocs[0]?.body ?? ""
 
   const show = (label: string, chunks: string[]) => {

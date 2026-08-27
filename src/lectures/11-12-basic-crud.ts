@@ -8,7 +8,7 @@ import { resetCollection, runExample } from "../lib/chroma.js"
  * async () => { ... } 는 자바의 람다 () -> { ... } 와 같고,
  * async 가 붙어서 Promise 를 반환한다.
  */
-await runExample("02 기본 CRUD", async () => {
+await runExample("[11~12강] 기본 CRUD (add / get / where / update / delete)", async () => {
   const collection = await resetCollection("basic-crud")
 
   // [자바 노트] 인자를 순서대로 넘기지 않고 객체 하나로 넘긴다.

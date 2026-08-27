@@ -7,7 +7,7 @@ import { answerQuestion, RAG_COLLECTION } from "../lib/rag.js"
  * RAG 전체 흐름: 인제스트 → 검색 → 생성. (강의 23~24)
  * `ollama pull llama3.2` 가 먼저 필요하다.
  */
-await runExample("08 RAG", async () => {
+await runExample("[23~24강] RAG 전체 흐름 (인제스트 → 검색 → 생성)", async () => {
   for (const doc of longDocs) {
     const { chunkCount } = await ingestDocument(RAG_COLLECTION, {
       source: doc.source,

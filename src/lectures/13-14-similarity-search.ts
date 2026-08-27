@@ -1,7 +1,7 @@
 import { resetCollection, runExample } from "../lib/chroma.js"
 
 /** 벡터 검색의 핵심 — 의미가 비슷한 문서를 찾아온다. */
-await runExample("05 유사도 검색", async () => {
+await runExample("[13~14강] 의미 검색과 코사인 거리", async () => {
   const collection = await resetCollection("similarity-search")
 
   await collection.add({

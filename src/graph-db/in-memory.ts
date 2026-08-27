@@ -37,7 +37,7 @@ const CHUNKS = [
   },
 ]
 
-await runExample("11 지식 그래프(Graph) + 벡터 + 리랭커 결합 (GraphRAG)", async () => {
+await runExample("인메모리 지식 그래프(Graph) + 벡터 + 리랭커 결합 (GraphRAG)", async () => {
   // 1. Chroma 벡터 컬렉션 세팅 및 문서 인제스트
   const collection = await resetCollection("graph-rag-demo")
   await collection.upsert({
