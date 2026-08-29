@@ -5,7 +5,8 @@ import { answerQuestion, RAG_COLLECTION } from "../lib/rag.js"
 
 /**
  * RAG 전체 흐름: 인제스트 → 검색 → 생성. (강의 23~24)
- * `ollama pull llama3.2` 가 먼저 필요하다.
+ * 답변 생성 모델(config.ollama.chatModel)을 먼저 받아둬야 한다.
+ * 기본값 확인: src/config.ts — 환경변수 OLLAMA_CHAT_MODEL 로 바꿀 수 있다.
  */
 await runExample("[23~24강] RAG 전체 흐름 (인제스트 → 검색 → 생성)", async () => {
   for (const doc of longDocs) {

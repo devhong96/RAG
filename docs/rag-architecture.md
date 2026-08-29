@@ -76,6 +76,7 @@
 ### 보조 모듈
 * [`eval/metrics.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lib/eval/metrics.ts): Top-K Hit Rate, MRR, 지연시간 등 정량적 검색 성능 평가
 * [`print.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lib/print.ts): 콘솔 결과 출력 및 코사인 거리 계산 유틸
+* [`collections.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lib/collections.ts): 예제가 만드는 컬렉션 이름 목록 (`npm run reset` 이 남의 데이터를 지우지 않도록 삭제 대상을 한정)
 * [`graph/knowledge-graph.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lib/graph/knowledge-graph.ts): 인메모리 엔티티/관계 트리플 기본 자료구조
 
 ---

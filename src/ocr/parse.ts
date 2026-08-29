@@ -4,6 +4,7 @@ import { runExample } from "../lib/chroma.js"
 import { OCREngine } from "./engine.js"
 import { structureOCRWithLLM } from "./pipeline.js"
 import { generateSampleDocImage } from "./sample-doc.js"
+import { config } from "../config.js"
 
 /**
  * [OCR 스크립트 1: 이미지 문자 추출 및 LLM 마크다운 복원 (Parse)]
@@ -32,7 +33,9 @@ await runExample("OCR 문자 추출 및 LLM 마크다운/표 복원 (Parse)", as
     console.log("==================================================")
     console.log(rawText)
 
-    console.log("\n[3] LLM(Llama 3.2)을 통한 오탈자 보정 및 마크다운/표 구조 복원 중...")
+    // 모델 이름을 문자열로 박아두면 설정을 바꿨을 때 화면 안내와 실제 동작이 어긋난다.
+    // config 에서 읽어 실제로 쓰는 모델을 그대로 보여준다.
+    console.log(`\n[3] LLM(${config.ollama.chatModel})을 통한 오탈자 보정 및 마크다운/표 구조 복원 중...`)
     const restoredMarkdown = await structureOCRWithLLM(rawText)
 
     console.log("\n==================================================")

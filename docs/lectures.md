@@ -16,8 +16,9 @@
 | **15강(외)** | `npm run lec:15` | [`15-chunking.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/15-chunking.ts) | 청킹 전략 6종 비교 (Fixed, Structural, Semantic) |
 | **19강** | `npm run lec:19` | [`19-hybrid-eval.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/19-hybrid-eval.ts) | 하이브리드 검색(BM25+벡터) + Top-K/MRR 정량 평가 |
 | **23~24강** | `npm run lec:23-24` | [`23-24-rag.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/23-24-rag.ts) | RAG 전체 파이프라인 (인제스트 → 검색 → 생성) |
+| **27강** | `npm run lec:27` | [`27-parent-child.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/27-parent-child.ts) | Parent-Child Retrieval (작은 조각으로 찾고 큰 문단으로 답변) |
 | **29~30강** | `npm run lec:29-30` | [`29-30-rerank.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/29-30-rerank.ts) | 크로스 인코더 2단계 재랭킹 검색 |
 | **31~32강** | `npm run lec:31-32` | [`31-32-self-query.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/31-32-self-query.ts) | 질의 재작성 · HyDE · Self-Querying 메타 필터링 |
-| **초기화** | `npm run reset` | [`reset.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/reset.ts) | 테스트 컬렉션 초기화 |
+| **초기화** | `npm run reset` | [`reset.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/lectures/reset.ts) | 예제 컬렉션만 초기화 (전체 삭제는 `npm run reset -- --all`) |
 
-*(기존 `npm run ex:01-connection` ~ `ex:10-self-query` 별칭도 그대로 실행 가능합니다)*
+*(기존 `npm run ex:01-connection` ~ `ex:10-self-query` 별칭도 그대로 실행 가능합니다. 27강은 `ex:12-parent-child` 로도 실행됩니다)*

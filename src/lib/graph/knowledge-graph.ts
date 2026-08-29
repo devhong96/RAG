@@ -64,7 +64,23 @@ export class KnowledgeGraph {
     return this
   }
 
-  /** 특정 엔티티를 기준으로 n-hop 연결된 모든 관계(트리플)를 탐색한다 (BFS). */
+  /**
+   * 특정 엔티티를 기준으로 n-hop 연결된 모든 관계(트리플)를 탐색한다 (BFS).
+   *
+   * [초보자 설명] BFS(너비 우선 탐색)는 "가까운 것부터 차례로" 퍼져나가는 방식이다.
+   * 시작 노드에서 1다리 건너인 것을 전부 본 다음, 2다리 건너인 것을 전부 보는 식이다.
+   * (반대인 DFS 는 한 방향으로 끝까지 파고들었다가 돌아온다.)
+   * 여기서 BFS 를 쓰는 이유는 "가까운 관계일수록 질문과 관련 있을 가능성이 높기" 때문이고,
+   * 덤으로 각 노드에 처음 도달했을 때의 깊이가 곧 최단 거리라는 성질도 공짜로 얻는다.
+   *
+   * 세 가지 자료구조가 나오는데 역할이 다르다.
+   *   queue        : 앞으로 방문할 노드 대기줄. 앞에서 꺼내고 뒤에 넣는다(선입선출).
+   *   visited      : 이미 대기줄에 넣은 노드. 없으면 A→B→A→B 로 무한히 맴돈다.
+   *   visitedEdges : 이미 결과에 담은 관계. 같은 관계가 두 번 담기는 걸 막는다.
+   *                  (노드 중복과 관계 중복은 별개라 따로 관리해야 한다)
+   *
+   * maxDepth 는 몇 다리까지 건너갈지다. 크게 잡으면 관련 없는 정보까지 딸려온다.
+   */
   traverse(startName: string, maxDepth = 2): Triple[] {
     const visited = new Set<string>()
     const queue: Array<{ name: string; depth: number }> = [{ name: startName, depth: 0 }]
@@ -74,7 +90,11 @@ export class KnowledgeGraph {
     visited.add(startName)
 
     while (queue.length > 0) {
+      // [자바 노트] shift() 는 배열 맨 앞을 꺼낸다. Queue.poll() 자리다.
+      //            끝에 붙이는 push() 는 offer() 에 해당한다.
+      //            뒤의 ! 는 "비어있지 않다고 확신한다"는 표시다(while 조건이 보장해준다).
       const { name, depth } = queue.shift()!
+      // 이미 최대 깊이에 도달한 노드에서는 더 뻗어나가지 않는다.
       if (depth >= maxDepth) continue
 
       // 순방향 탐색 (source -> target)
@@ -92,6 +112,10 @@ export class KnowledgeGraph {
       }
 
       // 역방향 탐색 (target <- source) - 연결된 맥락을 빠짐없이 수집
+      // [초보자 설명] 관계에는 방향이 있지만(A --위치--> B), 탐색은 양방향으로 한다.
+      // "에스메랄다 농장의 위치는?" 은 순방향이지만,
+      // "보케테 고지대에 있는 농장은?" 은 같은 관계를 거꾸로 타고 가야 답할 수 있다.
+      // 그래서 outgoing 뿐 아니라 incoming 도 함께 훑는다.
       const inRels = this.incoming.get(name) ?? []
       for (const r of inRels) {
         const edgeKey = `${r.source}->${r.relation}->${r.target}`
