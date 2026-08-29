@@ -1,6 +1,6 @@
 import { openCollection, runExample } from "../lib/chroma.js"
 import { Neo4jKnowledgeGraph } from "./client.js"
-import { searchGraphRAG, answerWithGraphRAG } from "./search-engine.js"
+import { searchGraphRAG, answerFromGraphRAGHits } from "../lib/search/graph-rag.js"
 
 /**
  * [Graph DB 스크립트 2: GraphRAG 질의 및 검색 (Search)]
@@ -67,11 +67,10 @@ await runExample("Graph DB 기반 GraphRAG 검색 및 질의응답", async () =>
     console.log("\n--------------------------------------------------")
     console.log("【 LLM 최종 답변 생성 중... 】")
     console.log("--------------------------------------------------")
-    const { answer } = await answerWithGraphRAG(collection, graph, query, {
-      vectorCandidates: 3,
-      graphDepth: 2,
-      topK: 4,
-    })
+    // [초보자 설명] 위에서 이미 searchGraphRAG 로 hits 를 뽑아 화면에 출력했다.
+    // 여기서 answerWithGraphRAG 를 부르면 똑같은 검색(벡터 + Neo4j + 리랭커)을 처음부터 다시 돌린다.
+    // 결과는 같은데 가장 비싼 단계를 두 번 하는 셈이라, 뽑아둔 hits 를 그대로 재사용한다.
+    const { answer } = await answerFromGraphRAGHits(query, hits)
     console.log(answer)
   } finally {
     await graph.close()

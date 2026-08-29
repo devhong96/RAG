@@ -108,15 +108,18 @@ export function buildGraphRAGContext(hits: GraphRAGHit[]): string {
 }
 
 /**
- * 지식 그래프 + 벡터 + 리랭커를 거쳐 최종 LLM 답변을 생성하는 RAG 함수.
+ * 이미 검색해 둔 결과(hits)로 답변만 생성한다.
+ *
+ * [초보자 설명] 검색과 답변 생성을 왜 나눠 뒀을까?
+ * 검색 단계(벡터 검색 + 그래프 탐색 + 크로스 인코더 재랭킹)가 이 파이프라인에서 가장 비싸다.
+ * 검색 결과를 화면에 한 번 보여주고, 그 다음 답변을 만들려고 answerWithGraphRAG 를 또 부르면
+ * 똑같은 검색이 처음부터 다시 돈다. 결과는 같은데 시간만 두 배로 든다.
+ * 그래서 "이미 뽑아둔 hits 로 답변만 만드는" 함수를 따로 두고, 호출하는 쪽에서 재사용한다.
  */
-export async function answerWithGraphRAG(
-  collection: Collection,
-  graph: GraphProvider,
+export async function answerFromGraphRAGHits(
   question: string,
-  options: GraphRAGOptions = {},
+  hits: GraphRAGHit[],
 ): Promise<{ answer: string; context: string; hits: GraphRAGHit[] }> {
-  const hits = await searchGraphRAG(collection, graph, question, options)
   const context = buildGraphRAGContext(hits)
 
   const messages: ChatMessage[] = [
@@ -137,4 +140,18 @@ export async function answerWithGraphRAG(
 
   const answer = await chatComplete(messages)
   return { answer, context, hits }
+}
+
+/**
+ * 지식 그래프 + 벡터 + 리랭커를 거쳐 최종 LLM 답변을 생성하는 RAG 함수.
+ * (검색 → 답변 생성을 한 번에 한다. 검색 결과를 따로 쓸 일이 없을 때 편하다.)
+ */
+export async function answerWithGraphRAG(
+  collection: Collection,
+  graph: GraphProvider,
+  question: string,
+  options: GraphRAGOptions = {},
+): Promise<{ answer: string; context: string; hits: GraphRAGHit[] }> {
+  const hits = await searchGraphRAG(collection, graph, question, options)
+  return answerFromGraphRAGHits(question, hits)
 }

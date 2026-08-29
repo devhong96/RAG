@@ -1,4 +1,5 @@
 import { resetCollection, runExample } from "../lib/chroma.js"
+import { printSearchResult } from "../lib/print.js"
 
 /** 벡터 검색의 핵심 — 의미가 비슷한 문서를 찾아온다. */
 await runExample("[13~14강] 의미 검색과 코사인 거리", async () => {
@@ -20,12 +21,10 @@ await runExample("[13~14강] 의미 검색과 코사인 거리", async () => {
   })
 
   console.log("질문: 잠이 안 오게 하는 음료가 뭐야?\n")
-  // [자바 노트] forEach 는 자바 스트림의 forEach 와 같다.
-  //            documents[0] 뒤의 "?." 는 값이 없으면 통째로 건너뛴다는 뜻 (NPE 방지).
-  results.documents[0]?.forEach((doc, i) => {
-    const distance = results.distances?.[0]?.[i]
-    console.log(`${i + 1}위 (거리 ${distance?.toFixed(4)}) ${doc}`)
-  })
+  // [초보자 설명] 검색 결과를 보기 좋게 찍는 코드는 예제마다 똑같이 반복된다.
+  // 그런 코드는 lib 로 빼두고 가져다 쓰는 게 좋다. printSearchResult 안을 열어보면
+  // ids / documents / distances 가 왜 2차원 배열인지도 함께 볼 수 있다.
+  printSearchResult(results)
 
   console.log("\n거리가 작을수록 가깝다.")
   console.log("주목: '고양이는 16시간을 잔다'가 상위권에 올라올 수 있다.")
