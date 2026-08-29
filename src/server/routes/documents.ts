@@ -12,7 +12,9 @@ interface IngestRequest {
 export const documentsRouter = Router()
 
 documentsRouter.post("/documents", async (req, res) => {
-  const body = req.body as IngestRequest
+  // Content-Type 이 없으면 express.json() 이 본문을 건드리지 않아 req.body 가 undefined 다.
+  // 그대로 두면 아래 검증에서 TypeError 가 나 400 이어야 할 요청이 500 으로 나간다.
+  const body = (req.body ?? {}) as IngestRequest
 
   if (!body.source || typeof body.source !== "string") {
     sendError(res, 400, "invalid_source", "source는 필수 문자열입니다")

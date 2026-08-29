@@ -23,6 +23,16 @@ import { searchRouter } from "./routes/search.js"
  * 에러 핸들러는 반드시 맨 마지막에 등록해야 앞의 라우터에서 난 에러를 받는다.
  */
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  // [초보자 설명] HTTP 상태 코드에서 4xx 는 "요청을 보낸 쪽 잘못", 5xx 는 "서버 잘못"이다.
+  // 본문이 깨진 JSON(예: '{oops')이면 express.json() 이 파싱하다 SyntaxError 를 던지는데,
+  // 이걸 그냥 흘려보내면 아래 500 으로 응답된다. 서버는 멀쩡한데 서버 탓이 되는 셈이다.
+  // 클라이언트가 원인을 알 수 있도록 400 으로 바꿔서 돌려준다.
+  // (type === "entity.parse.failed" 는 express 가 본문 파싱 실패에 붙여주는 표시다.
+  //  이걸 확인하지 않으면 우리 코드의 다른 SyntaxError 까지 400 으로 잘못 분류된다.)
+  if (error instanceof SyntaxError && (error as { type?: string }).type === "entity.parse.failed") {
+    sendError(res, 400, "invalid_json", "요청 본문이 올바른 JSON 이 아닙니다", errorMessage(error))
+    return
+  }
   console.error("처리되지 않은 에러:", error)
   sendError(res, 500, "internal_error", "서버 내부 오류가 발생했습니다", errorMessage(error))
 }

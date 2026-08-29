@@ -22,7 +22,9 @@ export const searchRouter = Router()
 searchRouter.post("/search", async (req, res) => {
   // [자바 노트] as 는 "이 타입이라고 치자"일 뿐 검사하지 않는다.
   //            실제로는 아무 JSON 이나 들어올 수 있다. 그래서 바로 아래에서 검증한다.
-  const body = req.body as SearchRequest
+  // Content-Type 이 없으면 express.json() 이 본문을 건드리지 않아 req.body 가 undefined 다.
+  // 그대로 두면 아래 검증에서 TypeError 가 나 400 이어야 할 요청이 500 으로 나간다.
+  const body = (req.body ?? {}) as SearchRequest
 
   if (!body.query || typeof body.query !== "string") {
     sendError(res, 400, "invalid_query", "query는 비어 있지 않은 문자열이어야 합니다")

@@ -26,15 +26,40 @@ export interface ExtractedFilter {
  * { category: "coffee", year: { $gte: 2024 } } 처럼 필드가 둘이면
  * "Expected 'where' to have exactly one operator, but got 2" 로 거부당한다.
  * $and 로 감싸주면 통과한다.
+ *
+ * [초보자 설명] 단순히 모든 키를 $and 로 감싸면 될 것 같지만 한 가지 함정이 있다.
+ * LLM 이 이미 $and 를 쓴 채로 필드를 덧붙여 오는 경우가 있다.
+ *   { $and: [{a: 1}], b: 2 }
+ * 이걸 그대로 감싸면 $and 안에 $and 가 또 들어간 이상한 모양이 된다.
+ *   { $and: [ { $and: [{a: 1}] }, { b: 2 } ] }   ← 불필요하게 중첩됨
+ * 그래서 이미 있는 $and 의 내용물은 껍데기를 벗겨서 같은 층에 펼쳐 넣는다.
+ *   { $and: [ {a: 1}, {b: 2} ] }                 ← 원하는 모양
+ * ($or 는 의미가 달라서 펼치면 안 된다. 통째로 하나의 조건으로 넣는다.)
  */
 export function normalizeWhere(
   where: Record<string, unknown> | null,
 ): Record<string, unknown> | null {
   if (!where) return null
+
   const keys = Object.keys(where)
   if (keys.length === 0) return null
-  if (keys.length === 1) return where
-  return { $and: keys.map((k) => ({ [k]: where[k] })) }
+
+  // 조건들을 한 층으로 펼쳐 모은다.
+  const conditions: unknown[] = []
+  for (const key of keys) {
+    const value = where[key]
+    if (key === "$and" && Array.isArray(value)) {
+      // 이미 $and 인 것은 껍데기를 벗겨 내용물만 꺼낸다 (중첩 방지).
+      conditions.push(...value)
+    } else {
+      conditions.push({ [key]: value })
+    }
+  }
+
+  if (conditions.length === 0) return null
+  // 조건이 하나뿐이면 $and 로 감쌀 필요가 없다.
+  if (conditions.length === 1) return conditions[0] as Record<string, unknown>
+  return { $and: conditions }
 }
 
 export async function extractFilter(

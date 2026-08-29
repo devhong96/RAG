@@ -81,12 +81,31 @@ export class Neo4jKnowledgeGraph {
     const safeDepth = Math.min(Math.max(1, Math.floor(maxDepth)), 5)
 
     try {
+      // [초보자 설명] depth(깊이) 는 "시작 노드에서 몇 다리 건너 있는 관계인가"를 뜻한다.
+      //   게이샤 --(대표 농장)--> 에스메랄다 --(위치)--> 보케테
+      // 여기서 '대표 농장' 은 depth 1, '위치' 는 depth 2 여야 한다.
+      //
+      // 예전 쿼리는 length(path) 를 depth 로 썼는데, 이건 "그 엣지가 실려 온 경로 전체의 길이"다.
+      // Neo4j 는 길이 1, 2, 3 짜리 경로를 각각 다 찾아내므로, 1-hop 인 '대표 농장' 이
+      // 길이 2 경로에도 길이 3 경로에도 끼어 있어 depth 1, 2, 3 으로 세 번 나왔다.
+      // (엣지 4개짜리 그래프에서 7행이 나왔다.) 그리고 아래 JS 중복 제거가 "먼저 온 것"을
+      // 남기므로, 실행할 때마다 depth 값이 달라질 수 있었다.
+      //
+      // 고친 방식:
+      //   1. UNWIND range(...) 로 경로 안에서 그 엣지가 몇 번째인지(idx)를 꺼낸다 → 위치는 idx+1
+      //   2. min(depth) 로 여러 경로 중 가장 짧은 위치만 남긴다 (= 최단 거리)
+      // 이러면 인메모리 BFS(KnowledgeGraph.traverse)와 결과가 정확히 같아진다.
       const result = await session.run(
         `
-        MATCH path = (start:Entity {name: $startName})-[*1..${safeDepth}]-(target:Entity)
-        UNWIND relationships(path) AS rel
-        WITH DISTINCT rel, startNode(rel) AS s, endNode(rel) AS t, length(path) AS d
-        RETURN s.name AS source, rel.type AS relation, t.name AS target, d AS depth
+        MATCH path = (start:Entity {name: $startName})-[*1..${safeDepth}]-(:Entity)
+        UNWIND range(0, size(relationships(path)) - 1) AS idx
+        WITH relationships(path)[idx] AS rel, idx + 1 AS depth
+        WITH rel, min(depth) AS depth
+        RETURN startNode(rel).name AS source,
+               rel.type AS relation,
+               endNode(rel).name AS target,
+               depth
+        ORDER BY depth, source, target
         `,
         { startName },
       )
