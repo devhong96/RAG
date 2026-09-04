@@ -35,3 +35,11 @@ docker run -d --name neo4j-rag -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/pas
 |:---|:---|:---|
 | `npm run ocr:parse` | [`parse.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/ocr/parse.ts) | 이미지 전처리(Sharp) + OCR(Tesseract) + LLM 마크다운/표 복원 (`scanned-doc-restored.md` 생성) |
 | `npm run ocr:search` | [`search.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/ocr/search.ts) | 복원된 문서를 구조 기반으로 청킹하여 Chroma에 적재하고 질의응답 |
+
+---
+
+## 3. 위키백과 코퍼스 파이프라인 (`src/wiki/`)
+
+한국어 위키백과 API 에서 실제 문서를 받아 제목 계층을 살려 청킹하고 RAG 질의까지 수행합니다.
+`npm run wiki:ingest` / `npm run wiki:search` 로 실행하며, 자세한 내용은
+[**LLM 위키 문서**](llm-wiki.md)에 정리되어 있습니다.

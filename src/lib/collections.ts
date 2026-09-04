@@ -28,4 +28,5 @@ export const EXAMPLE_COLLECTIONS: readonly string[] = [
   "graph-rag-demo", // 인메모리 GraphRAG
   "neo4j-graph-rag-demo", // Neo4j GraphRAG
   "ocr-documents-demo", // OCR 파이프라인
+  "llm-wiki", // 위키백과(LLM 주제) 인제스트/질의 파이프라인
 ]

@@ -34,6 +34,8 @@
     "graph:seed": "tsx src/graph-db/seed.ts",
     "graph:search": "tsx src/graph-db/search.ts",
     "graph:status": "tsx src/graph-db/status.ts",
+    "wiki:ingest": "tsx src/wiki/ingest.ts",
+    "wiki:search": "tsx src/wiki/search.ts",
     "ocr:parse": "tsx src/ocr/parse.ts",
     "ocr:search": "tsx src/ocr/search.ts",
     "reset": "tsx src/lectures/reset.ts"
