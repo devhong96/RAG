@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import type { Collection } from "chromadb"
+import { chunkArray, formatProgress, processInBatches } from "./batch.js"
 import { checkCitations, formatCitationWarning } from "./citations.js"
 import { chunkText, slidingChunk } from "./chunking/fixed.js"
 import { summarize } from "./eval/judge.js"
@@ -219,5 +220,41 @@ describe("지식 그래프", () => {
       { source: "A", relation: "연결", target: "B", depth: 1 },
       { source: "B", relation: "연결", target: "C", depth: 2 },
     ])
+  })
+})
+
+describe("배치 처리", () => {
+  it("나머지가 있어도 마지막 배치에 담는다", () => {
+    assert.deepEqual(chunkArray([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]])
+  })
+
+  it("빈 배열은 배치도 없다", () => {
+    assert.deepEqual(chunkArray([], 10), [])
+  })
+
+  it("크기가 0 이하면 무한 루프 대신 예외", () => {
+    assert.throws(() => chunkArray([1], 0))
+  })
+
+  it("모든 항목을 순서대로 한 번씩만 처리한다", async () => {
+    const seen: number[] = []
+    await processInBatches([1, 2, 3, 4, 5], async (batch) => {
+      seen.push(...batch)
+    }, { size: 2 })
+    assert.deepEqual(seen, [1, 2, 3, 4, 5])
+  })
+
+  it("배치마다 누적 진행 상황을 보고한다", async () => {
+    const progress: string[] = []
+    await processInBatches([1, 2, 3, 4, 5], async () => {}, {
+      size: 2,
+      onProgress: (p) => progress.push(`${p.batch}/${p.batchCount}:${p.done}/${p.total}`),
+    })
+    assert.deepEqual(progress, ["1/3:2/5", "2/3:4/5", "3/3:5/5"])
+  })
+
+  it("총 개수가 0이어도 진행률 계산이 깨지지 않는다", () => {
+    // 0으로 나누면 NaN 이 되므로 별도 처리가 필요하다.
+    assert.match(formatProgress({ done: 0, total: 0, batch: 0, batchCount: 0 }), /100%/)
   })
 })

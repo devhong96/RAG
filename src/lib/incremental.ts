@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import type { Collection } from "chromadb"
+import { processInBatches, type BatchProgress } from "./batch.js"
 
 /**
  * 증분 인덱싱 (Incremental Indexing).
@@ -142,10 +143,18 @@ export interface IncrementalStats {
  *   3. 성공한 뒤에 남은 예전 청크 삭제
  * 저장이 실패했을 때 "전부 사라짐"이 아니라 "예전 청크가 잠시 남음"이 되도록 한 것이다.
  */
+export interface IncrementalOptions {
+  /** 한 요청에 실을 청크 수. 생략하면 batch.ts 의 기본값. */
+  batchSize?: number
+  /** 배치 하나가 끝날 때마다 호출된다. 긴 인제스트의 진행률 표시용. */
+  onProgress?: (progress: BatchProgress) => void
+}
+
 export async function incrementalUpsert(
   collection: Collection,
   source: string,
   chunks: readonly PendingChunk[],
+  options: IncrementalOptions = {},
 ): Promise<IncrementalStats> {
   const previous = await collection.get({ where: { source } })
   const existing = new Map<string, string | undefined>()
@@ -157,13 +166,19 @@ export async function incrementalUpsert(
 
   const plan = planIncrementalUpsert(chunks, existing)
 
-  if (plan.changed.length > 0) {
-    await collection.upsert({
-      ids: plan.changed.map((c) => c.id),
-      documents: plan.changed.map((c) => c.text),
-      metadatas: plan.changed.map((c) => (c.metadata ?? {}) as Record<string, string | number | boolean>),
-    })
-  }
+  // 변경분을 한 요청에 다 실으면 청크가 많을 때 제한 시간 안에 못 끝내고 통째로 실패한다.
+  // 배치로 나눠 실패 단위를 줄이고 진행 상황을 볼 수 있게 한다. (패턴 8)
+  await processInBatches(
+    plan.changed,
+    async (batch) => {
+      await collection.upsert({
+        ids: batch.map((c) => c.id),
+        documents: batch.map((c) => c.text),
+        metadatas: batch.map((c) => (c.metadata ?? {}) as Record<string, string | number | boolean>),
+      })
+    },
+    { size: options.batchSize, onProgress: options.onProgress },
+  )
   if (plan.staleIds.length > 0) {
     await collection.delete({ ids: plan.staleIds })
   }

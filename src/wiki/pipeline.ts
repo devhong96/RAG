@@ -1,6 +1,7 @@
 import type { Collection } from "chromadb"
 import { splitByHeaders, type HeadingBlock } from "../lib/chunking/structural.js"
 import { chunkText } from "../lib/chunking/fixed.js"
+import { formatProgress } from "../lib/batch.js"
 import { formatStats, incrementalUpsert } from "../lib/incremental.js"
 import type { WikiArticle } from "./corpus.js"
 
@@ -115,7 +116,13 @@ export async function ingestWikiArticles(
     const chunks = chunkWikiArticle(article)
     if (chunks.length === 0) continue
 
-    const stats = await incrementalUpsert(collection, article.url, chunks)
+    // 배치가 여러 개일 때만 진행률을 찍는다. 한 배치로 끝나는 짧은 문서까지 찍으면
+    // 로그가 stats 한 줄과 중복될 뿐이다.
+    const stats = await incrementalUpsert(collection, article.url, chunks, {
+      onProgress: (p) => {
+        if (p.batchCount > 1) console.log(`    ${formatProgress(p)}`)
+      },
+    })
 
     console.log(`  적재: ${article.title} - 청크 ${chunks.length}개 (${formatStats(stats)})`)
     all.push(...chunks)
