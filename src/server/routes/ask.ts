@@ -1,6 +1,8 @@
 import { Router } from "express"
+import { config } from "../../config.js"
 import { checkQuestion, maskPii } from "../../lib/guardrails.js"
-import { answerInConversation, answerQuestion, conversations } from "../../lib/rag.js"
+import { answerInConversation, answerQuestionReliably } from "../../lib/rag.js"
+import { SqliteConversationStore } from "../../sqlite/conversation-store.js"
 import { errorMessage, sendError } from "./errors.js"
 
 interface AskRequest {
@@ -14,6 +16,7 @@ interface AskRequest {
 }
 
 export const askRouter = Router()
+const conversations = new SqliteConversationStore(config.storage.conversationDb)
 
 askRouter.post("/ask", async (req, res) => {
   // [초보자 설명] express.json() 은 요청 헤더에 Content-Type: application/json 이 있을 때만
@@ -61,12 +64,13 @@ askRouter.post("/ask", async (req, res) => {
     const sessionId = body.sessionId?.trim()
     const nResults = body.nResults ?? 3
     const result = sessionId
-      ? await answerInConversation(sessionId, body.question, nResults)
-      : await answerQuestion(body.question, nResults)
+      ? await answerInConversation(sessionId, body.question, nResults, conversations)
+      : await answerQuestionReliably(body.question, nResults)
     res.json({
       question: body.question,
       // 대화형일 때만 붙는다. 지시어가 무엇으로 풀렸는지 확인할 수 있어 디버깅에 요긴하다.
       ...("searchQuery" in result ? { searchQuery: result.searchQuery } : {}),
+      ...("attempts" in result ? { generationAttempts: result.attempts } : {}),
       // 나가는 쪽 가드레일. 적재한 문서에 섞여 있던 개인정보가 답변이나 발췌를 타고
       // 밖으로 나가는 경로를 여기서 한 번 더 막는다.
       answer: maskPii(result.answer),

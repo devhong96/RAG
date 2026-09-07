@@ -28,6 +28,14 @@ import { chatComplete, type ChatMessage } from "./llm.js"
 /** 한 세션이 기억할 최대 대화 수(사용자+AI 한 쌍 = 1턴). */
 export const MAX_TURNS = 5
 
+/** 인메모리와 SQLite 저장소가 함께 지켜야 하는 최소 계약. (패턴 19: 의존성 주입) */
+export interface ConversationStorePort {
+  get(sessionId: string): ChatMessage[]
+  append(sessionId: string, question: string, answer: string): void
+  clear(sessionId: string): void
+  readonly size: number
+}
+
 /**
  * 대화 기록에서 최근 N턴만 남긴다.
  *
@@ -94,7 +102,7 @@ export async function condenseQuestion(
  * 실제 서비스라면 Redis 나 DB 로 옮겨야 하지만, 학습 예제에서는 Map 으로 충분하다.
  * 서버를 재시작하면 기록이 사라진다는 점만 기억하면 된다.
  */
-export class ConversationStore {
+export class ConversationStore implements ConversationStorePort {
   private readonly sessions = new Map<string, ChatMessage[]>()
 
   constructor(private readonly maxTurns = MAX_TURNS) {}

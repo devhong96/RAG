@@ -14,6 +14,10 @@ import { describeRoute, heuristicRoute } from "./router.js"
 import { rrfMerge } from "./search/hybrid.js"
 import { normalizeWhere, parseWhere } from "./search/self-query.js"
 import { stripCodeFence } from "./structured.js"
+import { centroid, cosineSimilarity, l2Distance, topKByCosine } from "./vector-math.js"
+import { SqliteVectorStore } from "../sqlite/vector-store.js"
+import { SqliteConversationStore } from "../sqlite/conversation-store.js"
+import { answerQuestionReliably } from "./rag.js"
 
 /**
  * 외부 서비스 없이 반복 실행할 수 있는 단위 테스트 모음.
@@ -335,5 +339,132 @@ describe("질의 라우팅", () => {
     const text = describeRoute({ route: "none", reason: "인사입니다" })
     assert.match(text, /검색 없이/)
     assert.match(text, /인사입니다/)
+  })
+})
+
+describe("벡터 연산과 집계", () => {
+  it("코사인은 방향, L2는 좌표 사이의 직선 거리를 잰다", () => {
+    assert.equal(cosineSimilarity([1, 0], [2, 0]), 1)
+    assert.equal(cosineSimilarity([1, 0], [0, 1]), 0)
+    assert.equal(l2Distance([0, 0], [3, 4]), 5)
+  })
+
+  it("여러 벡터의 중심점을 차원별 평균으로 집계한다", () => {
+    assert.deepEqual(centroid([[1, 2], [3, 4]]), [2, 3])
+  })
+
+  it("Flat Top-K는 유사도가 높은 순서대로 자른다", () => {
+    const hits = topKByCosine([1, 0], [
+      { item: "같은 방향", vector: [2, 0] },
+      { item: "직각", vector: [0, 1] },
+      { item: "반대", vector: [-1, 0] },
+    ], 2)
+    assert.deepEqual(hits.map((hit) => hit.item), ["같은 방향", "직각"])
+  })
+
+  it("차원이 다르면 조용히 계산하지 않고 실패한다", () => {
+    assert.throws(() => cosineSimilarity([1, 2], [1]), /차원/)
+  })
+})
+
+describe("SQLite 의미 검색", () => {
+  it("정형 필터를 먼저 적용하고 벡터 유사도로 정렬한다", () => {
+    const store = new SqliteVectorStore()
+    try {
+      store.upsert("docs", [
+        { id: "a", text: "커피", embedding: [1, 0], metadata: { category: "drink" } },
+        { id: "b", text: "차", embedding: [0.8, 0.2], metadata: { category: "drink" } },
+        { id: "c", text: "자동차", embedding: [1, 0], metadata: { category: "vehicle" } },
+      ])
+      const hits = store.search("docs", [1, 0], 5, { category: "drink" })
+      assert.deepEqual(hits.map((hit) => hit.id), ["a", "b"])
+      assert.equal(store.count("docs"), 3)
+    } finally {
+      store.close()
+    }
+  })
+
+  it("같은 ID를 다시 넣으면 중복 대신 갱신한다", () => {
+    const store = new SqliteVectorStore()
+    try {
+      store.upsert("docs", [{ id: "a", text: "이전", embedding: [1, 0] }])
+      store.upsert("docs", [{ id: "a", text: "수정", embedding: [0, 1] }])
+      assert.equal(store.count("docs"), 1)
+      assert.equal(store.search("docs", [0, 1], 1)[0]?.text, "수정")
+    } finally {
+      store.close()
+    }
+  })
+
+  it("한 컬렉션에 서로 다른 차원의 벡터를 섞지 않는다", () => {
+    const store = new SqliteVectorStore()
+    try {
+      store.upsert("docs", [{ id: "a", text: "기준", embedding: [1, 0] }])
+      assert.throws(
+        () => store.upsert("docs", [{ id: "b", text: "오류", embedding: [1, 0, 0] }]),
+        /차원/,
+      )
+      assert.equal(store.count("docs"), 1)
+    } finally {
+      store.close()
+    }
+  })
+})
+
+describe("SQLite 대화 장기 기억", () => {
+  it("세션을 분리하고 최근 턴만 DB에 남긴다", () => {
+    const store = new SqliteConversationStore(":memory:", 1)
+    try {
+      store.append("a", "옛 질문", "옛 답변")
+      store.append("a", "새 질문", "새 답변")
+      store.append("b", "다른 질문", "다른 답변")
+      assert.deepEqual(store.get("a").map((message) => message.content), ["새 질문", "새 답변"])
+      assert.equal(store.size, 2)
+      store.clear("a")
+      assert.deepEqual(store.get("a"), [])
+    } finally {
+      store.close()
+    }
+  })
+})
+
+describe("신뢰 가능한 생성 자체점검", () => {
+  const source = { id: "d1", document: "근거", distance: 0.1, metadata: { source: "test" } }
+
+  it("인용이 빠지면 피드백을 주고 한 번 다시 생성한다", async () => {
+    const answers = ["인용 없는 답", "고친 답 [자료 1]"]
+    const result = await answerQuestionReliably("질문", 1, {
+      search: async () => [source],
+      generate: async () => answers.shift() ?? "",
+    })
+    assert.equal(result.answer, "고친 답 [자료 1]")
+    assert.equal(result.attempts, 2)
+    assert.equal(result.citations.missing, false)
+  })
+
+  it("첫 답이 정상이면 불필요한 재호출을 하지 않는다", async () => {
+    let calls = 0
+    const result = await answerQuestionReliably("질문", 1, {
+      search: async () => [source],
+      generate: async () => {
+        calls++
+        return "정상 답 [자료 1]"
+      },
+    })
+    assert.equal(calls, 1)
+    assert.equal(result.attempts, 1)
+  })
+
+  it("검색 결과가 없으면 존재할 수 없는 인용을 요구하며 재시도하지 않는다", async () => {
+    let calls = 0
+    const result = await answerQuestionReliably("없는 질문", 1, {
+      search: async () => [],
+      generate: async () => {
+        calls++
+        return "제공된 자료로는 답할 수 없습니다"
+      },
+    })
+    assert.equal(calls, 1)
+    assert.equal(result.attempts, 1)
   })
 })

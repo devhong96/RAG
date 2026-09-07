@@ -23,3 +23,11 @@ chroma/
 # OCR 예제가 실행 중에 만들어내는 산출물 (npm run ocr:parse / ocr:search)
 sample-doc-scan.png
 scanned-doc-restored.md
+
+# SQLite 실습과 대화 장기 기억 데이터
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+data/*.db
+data/*.db-shm
+data/*.db-wal

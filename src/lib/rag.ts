@@ -1,5 +1,5 @@
 import { checkCitations, type CitationCheck } from "./citations.js"
-import { condenseQuestion, ConversationStore, trimHistory } from "./conversation.js"
+import { condenseQuestion, ConversationStore, trimHistory, type ConversationStorePort } from "./conversation.js"
 import { searchDocuments, type SearchResult } from "./documents.js"
 import { chatComplete, type ChatMessage } from "./llm.js"
 
@@ -21,6 +21,61 @@ export async function answerQuestion(question: string, nResults = 3): Promise<An
   const context = buildContext(sources)
   const answer = await chatComplete(buildMessages(question, context))
   return { answer, sources, citations: checkCitations(answer, sources.length) }
+}
+
+export interface RagDependencies {
+  search(question: string, nResults: number): Promise<SearchResult[]>
+  generate(messages: ChatMessage[]): Promise<string>
+}
+
+export interface ReliableAnswer extends AnswerResult {
+  attempts: number
+}
+
+/**
+ * 의존성 주입 + 자체점검(패턴 19, 31) 예제.
+ * 생성 뒤 인용을 코드로 검사하고 실패하면 피드백을 붙여 딱 한 번 다시 생성한다.
+ * 무한 자기수정 루프를 막기 위해 기본 시도 횟수는 2회로 제한한다.
+ */
+export async function answerQuestionReliably(
+  question: string,
+  nResults = 3,
+  dependencies: RagDependencies = {
+    search: (query, count) => searchDocuments(RAG_COLLECTION, query, count),
+    generate: (messages) => chatComplete(messages),
+  },
+  maxAttempts = 2,
+): Promise<ReliableAnswer> {
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error("maxAttempts는 1 이상의 정수여야 합니다")
+  }
+
+  const sources = await dependencies.search(question, nResults)
+  const baseMessages = buildMessages(question, buildContext(sources))
+  let answer = ""
+  let citations = checkCitations(answer, sources.length)
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const messages = attempt === 1
+      ? baseMessages
+      : [
+          ...baseMessages,
+          { role: "assistant", content: answer } as const,
+          {
+            role: "user",
+            content: "자체점검에서 인용 누락 또는 존재하지 않는 자료 번호가 발견됐습니다. 내용은 새로 만들지 말고 올바른 [자료 n] 인용을 붙여 답변 전체를 다시 작성하세요.",
+          } as const,
+        ]
+    answer = await dependencies.generate(messages)
+    citations = checkCitations(answer, sources.length)
+    // 검색 결과가 없으면 인용할 자료 번호 자체가 없다. 이 경우에는 "답할 수 없음" 응답을
+    // 인용 누락으로 오판해 같은 생성을 반복하지 않는다.
+    if (sources.length === 0 || (!citations.missing && citations.invalid.length === 0)) {
+      return { answer, sources, citations, attempts: attempt }
+    }
+  }
+
+  return { answer, sources, citations, attempts: maxAttempts }
 }
 
 /** 검색 결과를 LLM 이 읽기 좋은 형태로 바꾼다. 출처와 관련도를 함께 넘긴다. */
@@ -91,7 +146,7 @@ export async function answerInConversation(
   sessionId: string,
   question: string,
   nResults = 3,
-  store: ConversationStore = conversations,
+  store: ConversationStorePort = conversations,
 ): Promise<ConversationalAnswer> {
   const history = trimHistory(store.get(sessionId))
   const searchQuery = await condenseQuestion(history, question)

@@ -32,6 +32,10 @@ export const config = {
   server: {
     port: positiveInteger(process.env.PORT, 3000),
   },
+  storage: {
+    /** API 서버의 멀티턴 대화를 재시작 뒤에도 유지하는 SQLite 파일. */
+    conversationDb: process.env.CONVERSATION_DB ?? "./data/conversations.sqlite",
+  },
   /** Neo4j (Graph DB). */
   neo4j: {
     url: process.env.NEO4J_URL ?? "bolt://localhost:7687",

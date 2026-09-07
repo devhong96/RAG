@@ -2,6 +2,9 @@
   "name": "chromadb-example",
   "version": "1.0.0",
   "description": "ChromaDB + Ollama(bge-m3) 학습용 예제 모음",
+  "engines": {
+    "node": ">=22.5"
+  },
   "scripts": {
     "db": "C=$(which -a chroma | grep -v node_modules | head -1); ${C:-chroma} run --path ./chroma-data",
     "server": "tsx src/server/index.ts",
@@ -42,6 +45,7 @@
     "ocr:search": "tsx src/ocr/search.ts",
     "eval:answer": "tsx src/eval/answer-eval.ts",
     "route": "tsx src/route-demo.ts",
+    "lab:sqlite": "tsx src/lectures/sqlite-semantic-search.ts",
     "reset": "tsx src/lectures/reset.ts"
   },
   "keywords": [],
