@@ -1,4 +1,5 @@
 import { Router } from "express"
+import { checkQuestion, maskPii } from "../../lib/guardrails.js"
 import { answerInConversation, answerQuestion, conversations } from "../../lib/rag.js"
 import { errorMessage, sendError } from "./errors.js"
 
@@ -39,6 +40,14 @@ askRouter.post("/ask", async (req, res) => {
     }
   }
 
+  // 가드레일은 경계에 둔다. 이 라우트가 신뢰할 수 없는 입력이 들어오는 유일한 문이므로,
+  // RAG 로직 안이 아니라 여기서 막는다. (검사 로직 자체는 lib/guardrails.ts)
+  const verdict = checkQuestion(body.question)
+  if (!verdict.ok) {
+    sendError(res, 400, verdict.code ?? "rejected", verdict.message ?? "처리할 수 없는 질문입니다")
+    return
+  }
+
   // sessionId 는 Map 의 키로 쓰이므로 형식을 확인한다. 숫자나 객체가 들어오면
   // 키가 "[object Object]" 같은 값이 되어 서로 다른 사용자의 대화가 한 세션에 섞인다.
   if (body.sessionId !== undefined) {
@@ -58,10 +67,12 @@ askRouter.post("/ask", async (req, res) => {
       question: body.question,
       // 대화형일 때만 붙는다. 지시어가 무엇으로 풀렸는지 확인할 수 있어 디버깅에 요긴하다.
       ...("searchQuery" in result ? { searchQuery: result.searchQuery } : {}),
-      answer: result.answer,
+      // 나가는 쪽 가드레일. 적재한 문서에 섞여 있던 개인정보가 답변이나 발췌를 타고
+      // 밖으로 나가는 경로를 여기서 한 번 더 막는다.
+      answer: maskPii(result.answer),
       sources: result.sources.map((s) => ({
         source: s.metadata?.source ?? "unknown",
-        excerpt: s.document.slice(0, 100),
+        excerpt: maskPii(s.document.slice(0, 100)),
         distance: s.distance,
       })),
     })
