@@ -1,5 +1,6 @@
 import type { Collection } from "chromadb"
-import { chatComplete, type ChatMessage } from "../llm.js"
+import type { ChatMessage } from "../llm.js"
+import { chatJson, type JsonSchema } from "../structured.js"
 
 /**
  * Self-Querying. (강의 32)
@@ -62,6 +63,37 @@ export function normalizeWhere(
   return { $and: conditions }
 }
 
+/**
+ * 필터 추출 결과의 스키마. (패턴 2 - 문법)
+ *
+ * where 를 스키마로 못 박지 않고 문자열로 받는 이유가 있다.
+ * Chroma 의 where 문법은 중첩이 자유로워($and 안에 $or, 그 안에 또 조건) JSON 스키마로
+ * 정확히 표현하기 어렵다. 억지로 표현하면 스키마가 거대해지고, 그 스키마를 지키느라
+ * 모델이 오히려 단순한 필터도 못 만든다.
+ * 그래서 "겉모양(두 필드가 반드시 있고, where 는 JSON 문자열)"만 강제하고
+ * 안쪽 내용은 기존처럼 파싱 후 normalizeWhere 로 다듬는다.
+ * 형식 보장을 어디까지 가져갈지는 이렇게 비용을 보고 정하는 판단이다.
+ */
+const FILTER_SCHEMA: JsonSchema = {
+  type: "object",
+  properties: {
+    cleanedQuestion: {
+      type: "string",
+      description: "필터 조건을 걷어낸, 의미 검색에 쓸 질의",
+    },
+    where: {
+      type: "string",
+      description: 'ChromaDB where 조건을 담은 JSON 문자열. 필터가 없으면 빈 문자열',
+    },
+  },
+  required: ["cleanedQuestion", "where"],
+}
+
+interface RawFilter {
+  cleanedQuestion?: string
+  where?: string
+}
+
 export async function extractFilter(
   question: string,
   schema: Record<string, MetadataField>,
@@ -71,28 +103,41 @@ export async function extractFilter(
       role: "system",
       content: `사용자 질의에서 메타데이터 필터를 추출하세요.
 가능한 필드: ${JSON.stringify(schema)}
-출력 형식: { "cleanedQuestion": "...", "where": { ... } }
-where는 ChromaDB의 where 문법($eq, $gt, $gte, $lt, $lte, $in, $and, $or)을 따릅니다.
-필터가 없으면 where를 null로 설정하세요.
-설명 없이 JSON만 출력하세요.`,
+where 는 ChromaDB where 문법($eq, $gt, $gte, $lt, $lte, $in, $and, $or)을 따르는
+JSON 을 "문자열로" 담으세요. 예: "{\"year\": {\"$gte\": 2024}}"
+필터로 옮길 조건이 없으면 where 를 빈 문자열로 두세요.
+cleanedQuestion 에는 필터로 옮긴 조건을 뺀 나머지 질의만 남기세요.`,
     },
     { role: "user", content: question },
   ]
 
-  const text = await chatComplete(messages)
+  // 문법으로 형식을 강제하므로 "JSON 이 아예 아닌" 실패는 사라진다.
+  // 그래도 null 검사를 남긴다. 형식이 맞아도 내용이 비어 있을 수 있고,
+  // 문법 지원이 없는 모델로 바꿔 끼울 수도 있기 때문이다.
+  const parsed = await chatJson<RawFilter>(messages, FILTER_SCHEMA)
+  if (!parsed) return { cleanedQuestion: question, where: null }
+
+  return {
+    cleanedQuestion: parsed.cleanedQuestion?.trim() || question,
+    where: normalizeWhere(parseWhere(parsed.where)),
+  }
+}
+
+/**
+ * where 문자열을 객체로 바꾼다. 비었거나 망가졌으면 null(필터 없음)로 본다.
+ *
+ * 순수 함수라 LLM 없이 테스트할 수 있다. 이 저장소가 로직을 쪼갤 때 쓰는 기준이
+ * "외부 호출 없이 검증 가능한가"이고, 여기서도 같은 기준을 적용했다.
+ */
+export function parseWhere(raw: string | undefined): Record<string, unknown> | null {
+  const trimmed = raw?.trim()
+  if (!trimmed || trimmed === "null" || trimmed === "{}") return null
   try {
-    // [자바 노트] LLM 출력은 신뢰할 수 없는 외부 입력이다.
-    //            잭슨처럼 스키마를 강제해주지 않으므로 파싱 실패를 반드시 감싸야 한다.
-    // LLM 이 ```json 펜스를 붙이는 경우가 잦아서 걷어낸다
-    const cleaned = text.replace(/```json\s*|\s*```/g, "").trim()
-    const parsed = JSON.parse(cleaned) as Partial<ExtractedFilter>
-    return {
-      cleanedQuestion: parsed.cleanedQuestion ?? question,
-      where: normalizeWhere(parsed.where ?? null),
-    }
+    const parsed: unknown = JSON.parse(trimmed)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null
+    return parsed as Record<string, unknown>
   } catch {
-    // LLM 출력은 신뢰할 수 없다. 파싱 실패하면 필터 없이 진행한다.
-    return { cleanedQuestion: question, where: null }
+    return null
   }
 }
 

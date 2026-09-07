@@ -19,6 +19,18 @@ export interface ChatOptions {
   temperature?: number
   /** 호출별 제한 시간. 생략하면 전역 OLLAMA_TIMEOUT_MS를 사용한다. */
   timeoutMs?: number
+  /**
+   * 출력 형식을 문법으로 강제한다. (패턴 2 - 문법)
+   *
+   * "json" 을 주면 올바른 JSON 임을 보장하고, JSON 스키마 객체를 주면
+   * 필드 이름과 타입까지 맞춘 JSON 만 나오게 한다.
+   *
+   * [초보자 설명] 프롬프트로 "JSON만 출력하세요"라고 부탁하는 것과는 급이 다르다.
+   * 부탁은 모델이 어길 수 있지만(설명을 덧붙이거나 ```json 펜스를 씌운다),
+   * 이건 토큰을 고르는 단계에서 형식에 안 맞는 후보를 아예 제외해 버린다.
+   * 그래서 "지켜주길 바라는" 게 아니라 "지킬 수밖에 없는" 출력이 된다.
+   */
+  format?: "json" | Record<string, unknown>
 }
 
 export async function chatComplete(
@@ -39,6 +51,8 @@ export async function chatComplete(
         model: config.ollama.chatModel,
         messages,
         stream: false,
+        // format 을 주지 않으면 키 자체를 빼야 한다. null 을 보내면 거부하는 버전이 있다.
+        ...(options.format ? { format: options.format } : {}),
         options: { temperature: options.temperature ?? 0 },
       }),
     })

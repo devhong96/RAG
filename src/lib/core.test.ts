@@ -7,7 +7,8 @@ import { KnowledgeGraph } from "./graph/knowledge-graph.js"
 import { ConversationStore, formatHistory, trimHistory } from "./conversation.js"
 import { contentHash, planIncrementalUpsert } from "./incremental.js"
 import { rrfMerge } from "./search/hybrid.js"
-import { normalizeWhere } from "./search/self-query.js"
+import { normalizeWhere, parseWhere } from "./search/self-query.js"
+import { stripCodeFence } from "./structured.js"
 
 /**
  * 외부 서비스 없이 반복 실행할 수 있는 단위 테스트 모음.
@@ -40,6 +41,18 @@ describe("검색 보조 로직", () => {
     assert.deepEqual(normalizeWhere({ category: "coffee", year: { $gte: 2024 } }), {
       $and: [{ category: "coffee" }, { year: { $gte: 2024 } }],
     })
+  })
+
+  it("where 문자열이 비었거나 망가지면 필터 없음으로 본다", () => {
+    assert.equal(parseWhere(""), null)
+    assert.equal(parseWhere("{}"), null)
+    assert.equal(parseWhere("{망가진 JSON"), null)
+    assert.equal(parseWhere("[1, 2]"), null) // 객체가 아니면 where 로 못 쓴다
+    assert.deepEqual(parseWhere('{"year": {"$gte": 2024}}'), { year: { $gte: 2024 } })
+  })
+
+  it("코드 펜스가 붙어 와도 걷어낸다", () => {
+    assert.equal(stripCodeFence('```json\n{"a": 1}\n```'), '{"a": 1}')
   })
 
   it("RRF는 여러 검색에서 반복해서 상위권인 문서를 먼저 둔다", () => {
