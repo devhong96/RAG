@@ -21,6 +21,7 @@
    src/lib/ollama-embedding.ts : 텍스트 → 1024차원 벡터 변환 (bge-m3 연동)
    src/lib/chroma.ts           : ChromaDB 연결, 컬렉션 생성/초기화 헬퍼
    src/lib/documents.ts        : 청킹 + 임베딩 + 저장을 한 번에 묶은 고수준 서비스
+   src/sqlite/vector-store.ts  : SQLite 정형 데이터 + 정확한 Flat 벡터 검색 비교 구현
    │
    ▼ 3단계: 똑똑하게 검색하기 (검색 전략)
    src/lib/search/
@@ -32,13 +33,14 @@
      • graph-rag.ts    : 지식 그래프 관계망과 벡터 문서를 하나로 병합
    │
    ▼ 4단계: 답변 생성 (LLM)
-   src/lib/rag.ts      : 검색된 자료로 최종 프롬프트를 조립하는 RAG 파이프라인
+   src/lib/rag.ts      : 검색된 자료로 프롬프트 조립 + 인용 자체점검/제한 재시도
    src/lib/llm.ts      : Ollama LLM(채팅 API) 호출 모듈
    │
    ▼ [보조 유틸]
    src/lib/eval/       : 검색 정확도 정량 평가 지표 (MRR, Top-K Hit Rate)
    src/lib/print.ts    : 코사인 거리 계산 및 콘솔 예쁜 출력 헬퍼
    src/lib/graph/      : 지식 그래프(노드, 엣지, 트리플) 기본 자료구조
+   src/sqlite/conversation-store.ts : 서버 재시작 뒤에도 남는 대화 기록
 ```
 
 ---
@@ -58,6 +60,7 @@
 * [`ollama-embedding.ts`](../src/lib/ollama-embedding.ts): Ollama API를 호출해 `bge-m3` 모델로 텍스트를 **1024차원 벡터**로 변환
 * [`chroma.ts`](../src/lib/chroma.ts): ChromaDB 클라이언트 싱글턴 관리, 컬렉션 초기화 및 공통 래퍼 제공
 * [`documents.ts`](../src/lib/documents.ts): 문서 청킹부터 임베딩, 메타데이터 부착, ChromaDB 적재까지 원스톱으로 처리하는 서비스
+* [`sqlite/vector-store.ts`](../src/sqlite/vector-store.ts): 정형 metadata와 벡터를 SQLite 한 행에 저장하고 전체 비교로 정확한 Top-K를 구하는 기준 구현
 
 ### 3단계: 고급 검색 전략 (Retrieval & Search) — `src/lib/search/`
 단순 벡터 유사도 검색의 한계를 보완하고 정확한 컨텍스트를 추출합니다.
@@ -72,8 +75,9 @@
 ### 4단계: 답변 생성 (Generation) — `src/lib/`
 추출된 컨텍스트와 사용자 질문을 프롬프트로 결합하여 최종 답변을 생성합니다.
 
-* [`rag.ts`](../src/lib/rag.ts): 검색된 청크들로 컨텍스트를 구성하고, 프롬프트 템플릿에 주입하여 전체 RAG 실행
+* [`rag.ts`](../src/lib/rag.ts): 검색된 청크들로 컨텍스트를 구성하고, 인용 자체점검이 실패하면 최대 한 번 다시 생성
 * [`llm.ts`](../src/lib/llm.ts): Ollama 채팅 API (`/api/chat`)를 호출해 LLM으로부터 답변 수신
+* [`sqlite/conversation-store.ts`](../src/sqlite/conversation-store.ts): API 세션의 최근 대화를 SQLite에 영속화
 
 ### 보조 모듈
 * [`eval/metrics.ts`](../src/lib/eval/metrics.ts): Top-K Hit Rate, MRR, 지연시간 등 정량적 검색 성능 평가
@@ -93,6 +97,7 @@ src/
   │                        (예: 15강 -> chunking, 19강 -> search/hybrid, 23~24강 -> rag)
   │
   ├── server/            [서비스화] lib/documents.ts와 lib/rag.ts를 Express REST API로 노출
+  ├── sqlite/            [비교·영속화] Flat 벡터 검색 기준 구현과 대화 장기 기억
   │
   ├── graph-db/          [도메인 확장] lib/search/graph-rag.ts 기반 Neo4j 연동 파이프라인
   │

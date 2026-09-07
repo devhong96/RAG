@@ -21,9 +21,12 @@
 | **27강** | `npm run lec:27` | [`27-parent-child.ts`](../src/lectures/27-parent-child.ts) | Parent-Child Retrieval (작은 조각으로 찾고 큰 문단으로 답변) |
 | **29~30강** | `npm run lec:29-30` | [`29-30-rerank.ts`](../src/lectures/29-30-rerank.ts) | 크로스 인코더 2단계 재랭킹 검색 |
 | **31~32강** | `npm run lec:31-32` | [`31-32-self-query.ts`](../src/lectures/31-32-self-query.ts) | 질의 재작성 · HyDE · Self-Querying 메타 필터링 |
+| **추가 실습** | `npm run lab:sqlite` | [`sqlite-semantic-search.ts`](../src/lectures/sqlite-semantic-search.ts) | SQLite 정형 필터 + 정확한 Flat 벡터 검색 |
 | **초기화** | `npm run reset` | [`reset.ts`](../src/lectures/reset.ts) | 예제 컬렉션만 초기화 (전체 삭제는 `npm run reset -- --all`) |
 
 > 이 예제의 키워드 검색은 Chroma의 `$contains`를 이용한 문자열 포함 검색입니다.
 > 단어 빈도와 문서 길이를 반영해 순위를 계산하는 BM25 구현은 아닙니다.
 
 *(기존 `npm run ex:01-connection` ~ `ex:10-self-query` 별칭도 그대로 실행 가능합니다. 27강은 `ex:12-parent-child` 로도 실행됩니다)*
+
+처음 공부한다면 모든 명령을 한꺼번에 실행하지 말고 [RAG 학습 가이드](README.md)의 단계별 순서를 따릅니다. 각 예제에서 출력 순위와 거리값을 기록해 두면 이후 하이브리드·재랭킹을 붙였을 때 무엇이 달라졌는지 비교하기 쉽습니다.
