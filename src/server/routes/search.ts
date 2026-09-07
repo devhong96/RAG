@@ -26,28 +26,36 @@ searchRouter.post("/search", async (req, res) => {
   // 그대로 두면 아래 검증에서 TypeError 가 나 400 이어야 할 요청이 500 으로 나간다.
   const body = (req.body ?? {}) as SearchRequest
 
-  if (!body.query || typeof body.query !== "string") {
+  if (!body.query || typeof body.query !== "string" || body.query.trim() === "") {
     sendError(res, 400, "invalid_query", "query는 비어 있지 않은 문자열이어야 합니다")
     // [자바 노트] return 을 빼먹으면 아래 코드가 계속 실행되어 응답을 두 번 보내려 한다.
     //            스프링처럼 "리턴하면 끝"이 아니라 직접 흐름을 끊어야 한다.
     return
   }
+  // JSON의 1.5도 number이므로 "숫자인가"만 검사해서는 부족하다.
+  // nResults는 결과 개수라서 정수여야 하고, 상한은 한 요청이 DB를 과도하게 쓰는 것을 막는다.
   if (body.nResults !== undefined) {
-    if (typeof body.nResults !== "number" || body.nResults < 1 || body.nResults > 50) {
-      sendError(res, 400, "invalid_n_results", "nResults는 1과 50 사이의 숫자여야 합니다")
+    if (typeof body.nResults !== "number" || !Number.isInteger(body.nResults) || body.nResults < 1 || body.nResults > 50) {
+      sendError(res, 400, "invalid_n_results", "nResults는 1과 50 사이의 정수여야 합니다")
       return
     }
+  }
+  // JavaScript에서 typeof null과 typeof []도 각각 "object"다.
+  // 그래서 일반 객체를 기대할 때는 null과 배열을 따로 제외해야 한다.
+  if (body.where !== undefined && (!body.where || typeof body.where !== "object" || Array.isArray(body.where))) {
+    sendError(res, 400, "invalid_where", "where는 객체여야 합니다")
+    return
   }
 
   try {
     const results = await searchDocuments(
       RAG_COLLECTION,
-      body.query,
+      body.query.trim(),
       body.nResults ?? 5,
       body.where,
     )
     // [자바 노트] res.json(...) ≒ return ResponseEntity.ok(...)
-    res.json({ results, query: body.query })
+    res.json({ results, query: body.query.trim() })
   } catch (error) {
     sendError(res, 502, "search_failed", "검색 처리 중 오류가 발생했습니다", errorMessage(error))
   }

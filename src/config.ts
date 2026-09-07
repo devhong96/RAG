@@ -20,6 +20,8 @@ export const config = {
     model: process.env.OLLAMA_MODEL ?? "bge-m3",
     /** 답변 생성용 LLM. */
     chatModel: process.env.OLLAMA_CHAT_MODEL ?? "gemma4:26b",
+    /** 응답 없는 로컬 모델 때문에 요청이 무한정 멈추지 않게 하는 상한. */
+    timeoutMs: positiveInteger(process.env.OLLAMA_TIMEOUT_MS, 60_000),
   },
   /** 재랭킹용 크로스 인코더. 강의 29 부터 사용. */
   reranker: {
@@ -28,7 +30,7 @@ export const config = {
   },
   /** Express 서버. 강의 22 부터 사용. */
   server: {
-    port: Number(process.env.PORT ?? 3000),
+    port: positiveInteger(process.env.PORT, 3000),
   },
   /** Neo4j (Graph DB). */
   neo4j: {
@@ -40,3 +42,12 @@ export const config = {
 
 /** bge-m3 가 만들어내는 벡터의 차원 수. */
 export const EMBEDDING_DIM = 1024
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  // 환경변수는 숫자를 적어도 항상 문자열로 들어온다. Number()로 바꾼 뒤 검증하지 않으면
+  // PORT=abc 같은 설정이 NaN이 되어 실제 서버 시작 지점에서 이해하기 어려운 오류가 난다.
+  // 학습 예제는 잘못된 선택 설정 때문에 시작조차 못 하는 것보다 안전한 기본값으로 돌아간다.
+  if (value === undefined) return fallback
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
+}

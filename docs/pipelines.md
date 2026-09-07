@@ -11,10 +11,10 @@
 ### 실행 스크립트
 | 스크립트 | 소스 파일 | 설명 |
 |:---|:---|:---|
-| `npm run graph:seed` | [`seed.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/graph-db/seed.ts) | Neo4j 노드/엣지 및 Chroma 벡터 청크 적재 |
-| `npm run graph:search` | [`search.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/graph-db/search.ts) | 다단계 그래프 탐색 + 벡터 검색 + 리랭킹 답변 생성 |
-| `npm run graph:status` | [`status.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/graph-db/status.ts) | 현재 저장된 노드/관계 통계 및 엔티티 확인 |
-| `npm run graph:in-memory` | [`in-memory.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/graph-db/in-memory.ts) | 경량 인메모리 지식 그래프 실습 |
+| `npm run graph:seed` | [`seed.ts`](../src/graph-db/seed.ts) | Neo4j 노드/엣지 및 Chroma 벡터 청크 적재 |
+| `npm run graph:search` | [`search.ts`](../src/graph-db/search.ts) | 다단계 그래프 탐색 + 벡터 검색 + 리랭킹 답변 생성 |
+| `npm run graph:status` | [`status.ts`](../src/graph-db/status.ts) | 현재 저장된 노드/관계 통계 및 엔티티 확인 |
+| `npm run graph:in-memory` | [`in-memory.ts`](../src/graph-db/in-memory.ts) | 경량 인메모리 지식 그래프 실습 |
 
 ### Docker 구동 및 웹 브라우저 시각화
 ```bash
@@ -33,8 +33,8 @@ docker run -d --name neo4j-rag -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/pas
 ### 실행 스크립트
 | 스크립트 | 소스 파일 | 설명 |
 |:---|:---|:---|
-| `npm run ocr:parse` | [`parse.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/ocr/parse.ts) | 이미지 전처리(Sharp) + OCR(Tesseract) + LLM 마크다운/표 복원 (`scanned-doc-restored.md` 생성) |
-| `npm run ocr:search` | [`search.ts`](file:///Users/hongseho/Desktop/folder/RAG/src/ocr/search.ts) | 복원된 문서를 구조 기반으로 청킹하여 Chroma에 적재하고 질의응답 |
+| `npm run ocr:parse` | [`parse.ts`](../src/ocr/parse.ts) | 이미지 전처리(Sharp) + OCR(Tesseract) + LLM 마크다운/표 복원 (`scanned-doc-restored.md` 생성) |
+| `npm run ocr:search` | [`search.ts`](../src/ocr/search.ts) | 복원된 문서를 구조 기반으로 청킹하여 Chroma에 적재하고 질의응답 |
 
 ---
 

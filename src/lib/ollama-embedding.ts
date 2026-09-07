@@ -11,6 +11,7 @@ import { config } from "../config.js"
 export interface OllamaEmbeddingOptions {
   url?: string
   model?: string
+  timeoutMs?: number
 }
 
 /**
@@ -31,6 +32,7 @@ export class OllamaEmbeddingFunction implements EmbeddingFunction {
   //            (타입 검사 단계에서만 막아준다).
   private readonly url: string
   private readonly model: string
+  private readonly timeoutMs: number
 
   // [자바 노트] 자바의 오버로딩 대신 "옵션 객체 + 기본값" 패턴을 쓴다.
   //            = {} 는 인자를 아예 안 넘겨도 되게 하는 기본값이다.
@@ -39,6 +41,7 @@ export class OllamaEmbeddingFunction implements EmbeddingFunction {
     //            자바의 Optional.ofNullable(x).orElse(y) 와 같다.
     this.url = options.url ?? config.ollama.url
     this.model = options.model ?? config.ollama.model
+    this.timeoutMs = options.timeoutMs ?? config.ollama.timeoutMs
     // [자바 노트] 백틱 문자열은 자바 15+ 의 텍스트 블록 + String.format 을 합친 것.
     this.name = `ollama-${this.model}`
   }
@@ -71,13 +74,21 @@ export class OllamaEmbeddingFunction implements EmbeddingFunction {
     try {
       // [자바 노트] fetch 는 Node 에 내장된 HTTP 클라이언트다 (HttpClient 자리).
       //            별도 라이브러리를 깔 필요가 없다.
+      // 채팅 호출과 마찬가지로 fetch에는 기본 timeout이 없어서 명시적으로 취소 신호를 준다.
       response = await fetch(`${this.url}/api/embed`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(this.timeoutMs),
         // [자바 노트] JSON.stringify = 잭슨의 writeValueAsString.
         body: JSON.stringify({ model: this.model, input: texts }),
       })
     } catch (cause) {
+      if (cause instanceof Error && cause.name === "TimeoutError") {
+        throw new Error(
+          `Ollama 임베딩 응답 제한 시간을 초과했습니다 (${this.timeoutMs}ms).`,
+          { cause },
+        )
+      }
       // fetch 자체가 실패 = 서버가 안 떠 있는 경우가 대부분이다.
       // [자바 노트] { cause } 는 자바의 new Exception(msg, cause) 와 같다.
       //            참고로 TS 에는 checked exception 이 없어서 throws 선언이 없다.

@@ -25,6 +25,9 @@ export async function evaluateTopK(
   cases: readonly EvalCase[],
   k: number,
 ): Promise<number> {
+  // 0으로 나누면 JavaScript는 예외 대신 NaN을 만든다. NaN은 JSON 직렬화나 평균 집계에서
+  // 원인을 찾기 어려운 값이 되므로, "평가할 사례 없음"을 이 예제에서는 0으로 정의한다.
+  if (cases.length === 0) return 0
   let hits = 0
   for (const { query, expectedId } of cases) {
     const result = await collection.query({ queryTexts: [query], nResults: k })
@@ -57,6 +60,8 @@ export async function evaluateMRR(
   cases: readonly EvalCase[],
   nResults = 10,
 ): Promise<number> {
+  // evaluateTopK와 같은 빈 입력 정책을 유지한다. 지표마다 처리 방식이 다르면 비교표가 깨진다.
+  if (cases.length === 0) return 0
   let total = 0
   for (const { query, expectedId } of cases) {
     const result = await collection.query({ queryTexts: [query], nResults })
@@ -71,6 +76,8 @@ export async function evaluateRetrieval(
   cases: readonly EvalCase[],
   search: (query: string) => Promise<string[]>,
 ): Promise<{ recall: number; mrr: number }> {
+  // search를 호출하기 전에 반환하므로 빈 평가셋 테스트는 외부 DB 없이도 실행할 수 있다.
+  if (cases.length === 0) return { recall: 0, mrr: 0 }
   let hits = 0
   let mrr = 0
   for (const { query, expectedId } of cases) {

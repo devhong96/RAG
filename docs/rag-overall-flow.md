@@ -1,5 +1,7 @@
 # RAG 파이프라인 7단계 흐름 (개발자 관점)
 
+> 학습 위치: [전체 문서 지도](README.md) · 이전: [RAG 도입 기준](rag-vs-modular-reading.md) · 다음: [벡터 DB와 임베딩](vector-db.md)
+
 > RAG 시스템에서 '나의 파이썬 스크립트'가 중심이 되어 2개의 AI(임베딩, LLM)와 2개의 멍청한 DB(Vector, Graph)를 지휘하는 실전 실행 순서.
 
 > 관련 문서:
