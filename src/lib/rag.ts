@@ -1,3 +1,4 @@
+import { condenseQuestion, ConversationStore, trimHistory } from "./conversation.js"
 import { searchDocuments, type SearchResult } from "./documents.js"
 import { chatComplete, type ChatMessage } from "./llm.js"
 
@@ -33,7 +34,11 @@ function buildContext(sources: SearchResult[]): string {
  *   2. 근거 규칙을 준다 — 자료 밖의 내용을 지어내지 못하게
  *   3. 형식 규칙을 준다 — 길이와 언어
  */
-function buildMessages(question: string, context: string): ChatMessage[] {
+function buildMessages(
+  question: string,
+  context: string,
+  history: readonly ChatMessage[] = [],
+): ChatMessage[] {
   return [
     {
       role: "system",
@@ -47,9 +52,48 @@ function buildMessages(question: string, context: string): ChatMessage[] {
 4. 모든 단어를 한국어로 쓰세요. 영어 단어를 섞지 마세요.
 5. 두세 문장 안에 핵심만 정리하고, 자료에 없는 정보는 덧붙이지 마세요.`,
     },
+    // 이전 대화를 system 다음, 이번 질문 앞에 그대로 끼워 넣는다.
+    // 대화 기록은 "맥락"이고 자료는 "근거"라서 역할이 다르므로 섞지 않고 따로 둔다.
+    ...history,
     {
       role: "user",
       content: `다음 자료를 참고해서 질문에 답해 주세요.\n\n[자료]\n${context}\n\n[질문]\n${question}`,
     },
   ]
+}
+
+/** 세션별 대화 기록. 서버와 CLI 데모가 함께 쓴다. */
+export const conversations = new ConversationStore()
+
+export interface ConversationalAnswer extends AnswerResult {
+  /** 실제로 검색에 사용한 질의. 원문과 다르면 압축이 일어난 것이다. */
+  searchQuery: string
+}
+
+/**
+ * 대화 맥락을 유지하는 RAG. (책 8장 대응)
+ *
+ * 흐름: 질문 압축 -> 검색 -> 컨텍스트 조립 -> (대화 기록 포함) 생성 -> 기록 저장
+ *
+ * `answerQuestion` 과 나누어 둔 이유는, 단발 질의에는 압축 단계의 LLM 호출이 순수한 낭비이기
+ * 때문이다. 대화형이 필요할 때만 그 비용을 내도록 진입점을 따로 뒀다.
+ */
+export async function answerInConversation(
+  sessionId: string,
+  question: string,
+  nResults = 3,
+  store: ConversationStore = conversations,
+): Promise<ConversationalAnswer> {
+  const history = trimHistory(store.get(sessionId))
+  const searchQuery = await condenseQuestion(history, question)
+
+  const sources = await searchDocuments(RAG_COLLECTION, searchQuery, nResults)
+  const context = buildContext(sources)
+  const answer = await chatComplete(buildMessages(question, context, history))
+
+  // 답변 생성이 성공한 뒤에 기록한다. 실패한 턴을 기록에 남기면
+  // 다음 질문의 압축이 없는 답변을 참고하게 되어 맥락이 오염된다.
+  store.append(sessionId, question, answer)
+
+  return { answer, sources, searchQuery }
 }

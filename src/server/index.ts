@@ -55,5 +55,6 @@ app.listen(config.server.port, () => {
   console.log(`  GET  /health`)
   console.log(`  POST /search     { query, nResults?, where? }`)
   console.log(`  POST /documents  { source, text, metadata? }`)
-  console.log(`  POST /ask        { question, nResults? }`)
+  console.log(`  POST /ask        { question, nResults?, sessionId? }`)
+  console.log(`  DELETE /sessions/:sessionId`)
 })

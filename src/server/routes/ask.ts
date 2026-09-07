@@ -1,10 +1,15 @@
 import { Router } from "express"
-import { answerQuestion } from "../../lib/rag.js"
+import { answerInConversation, answerQuestion, conversations } from "../../lib/rag.js"
 import { errorMessage, sendError } from "./errors.js"
 
 interface AskRequest {
   question: string
   nResults?: number
+  /**
+   * 있으면 그 세션의 대화 맥락을 이어서 답한다. 없으면 기존처럼 단발 질의로 처리한다.
+   * 클라이언트가 아무 문자열이나 정해서 보내면 되고, 서버는 그 값으로 기록을 모아둔다.
+   */
+  sessionId?: string
 }
 
 export const askRouter = Router()
@@ -34,10 +39,25 @@ askRouter.post("/ask", async (req, res) => {
     }
   }
 
+  // sessionId 는 Map 의 키로 쓰이므로 형식을 확인한다. 숫자나 객체가 들어오면
+  // 키가 "[object Object]" 같은 값이 되어 서로 다른 사용자의 대화가 한 세션에 섞인다.
+  if (body.sessionId !== undefined) {
+    if (typeof body.sessionId !== "string" || body.sessionId.trim() === "" || body.sessionId.length > 100) {
+      sendError(res, 400, "invalid_session_id", "sessionId는 1~100자 문자열이어야 합니다")
+      return
+    }
+  }
+
   try {
-    const result = await answerQuestion(body.question, body.nResults ?? 3)
+    const sessionId = body.sessionId?.trim()
+    const nResults = body.nResults ?? 3
+    const result = sessionId
+      ? await answerInConversation(sessionId, body.question, nResults)
+      : await answerQuestion(body.question, nResults)
     res.json({
       question: body.question,
+      // 대화형일 때만 붙는다. 지시어가 무엇으로 풀렸는지 확인할 수 있어 디버깅에 요긴하다.
+      ...("searchQuery" in result ? { searchQuery: result.searchQuery } : {}),
       answer: result.answer,
       sources: result.sources.map((s) => ({
         source: s.metadata?.source ?? "unknown",
@@ -48,4 +68,15 @@ askRouter.post("/ask", async (req, res) => {
   } catch (error) {
     sendError(res, 502, "answer_failed", "답변 생성 중 오류가 발생했습니다", errorMessage(error))
   }
+})
+
+/**
+ * 대화 기록을 비운다. 화제를 완전히 바꿀 때 쓴다.
+ *
+ * [초보자 설명] 왜 필요한가? 질문 압축은 이전 대화를 참고하므로, 앞의 화제가 남아 있으면
+ * 전혀 다른 새 질문까지 예전 주제로 끌어당겨 해석할 수 있다. 대화 UI 의 "새 대화" 버튼 자리다.
+ */
+askRouter.delete("/sessions/:sessionId", (req, res) => {
+  conversations.clear(req.params.sessionId)
+  res.json({ sessionId: req.params.sessionId, cleared: true })
 })

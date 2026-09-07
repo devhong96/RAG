@@ -4,6 +4,7 @@ import type { Collection } from "chromadb"
 import { chunkText, slidingChunk } from "./chunking/fixed.js"
 import { evaluateMRR, evaluateRetrieval, evaluateTopK } from "./eval/metrics.js"
 import { KnowledgeGraph } from "./graph/knowledge-graph.js"
+import { ConversationStore, formatHistory, trimHistory } from "./conversation.js"
 import { contentHash, planIncrementalUpsert } from "./incremental.js"
 import { rrfMerge } from "./search/hybrid.js"
 import { normalizeWhere } from "./search/self-query.js"
@@ -101,6 +102,48 @@ describe("증분 인덱싱", () => {
       existing,
     )
     assert.deepEqual(plan.unchangedIds, ["doc-0"])
+  })
+})
+
+describe("대화 기록", () => {
+  const turn = (i: number) => [
+    { role: "user", content: `질문${i}` } as const,
+    { role: "assistant", content: `답변${i}` } as const,
+  ]
+
+  it("최근 N턴만 남기되 사용자/AI 짝을 깨지 않는다", () => {
+    const history = [1, 2, 3, 4].flatMap(turn)
+    const trimmed = trimHistory(history, 2)
+    assert.equal(trimmed.length, 4)
+    assert.equal(trimmed[0]?.content, "질문3")
+    assert.equal(trimmed[0]?.role, "user")
+  })
+
+  it("기록이 한도보다 짧으면 그대로 둔다", () => {
+    assert.deepEqual(trimHistory(turn(1), 5), turn(1))
+  })
+
+  it("프롬프트에 넣을 때 화자를 붙인다", () => {
+    assert.equal(formatHistory(turn(1)), "사용자: 질문1\nAI: 답변1")
+  })
+
+  it("세션마다 기록이 섞이지 않고, clear 로 비워진다", () => {
+    const store = new ConversationStore(2)
+    store.append("a", "질문A", "답변A")
+    store.append("b", "질문B", "답변B")
+    assert.equal(store.get("a").length, 2)
+    assert.equal(store.get("a")[0]?.content, "질문A")
+
+    store.clear("a")
+    assert.deepEqual(store.get("a"), [])
+    assert.equal(store.get("b").length, 2)
+  })
+
+  it("한도를 넘으면 오래된 턴부터 버린다", () => {
+    const store = new ConversationStore(1)
+    store.append("a", "옛질문", "옛답변")
+    store.append("a", "새질문", "새답변")
+    assert.deepEqual(store.get("a").map((m) => m.content), ["새질문", "새답변"])
   })
 })
 
