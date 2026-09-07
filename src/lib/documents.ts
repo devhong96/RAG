@@ -1,6 +1,7 @@
 import { ChromaNotFoundError, type Collection } from "chromadb"
 import { client, embedder } from "./chroma.js"
 import { chunkText } from "./chunking/fixed.js"
+import { incrementalUpsert, type IncrementalStats } from "./incremental.js"
 
 /**
  * Express 서버가 쓰는 문서 서비스. (강의 22~24)
@@ -142,29 +143,47 @@ export interface IngestInput {
  * id 에 타임스탬프를 넣으면 재인제스트할 때마다 새 id 가 생겨서
  * upsert 가 아니라 중복 적재가 된다. id 는 source+순번으로 고정하고,
  * 시각은 메타데이터에만 남긴다.
- * 문서가 짧아져서 청크 수가 줄어드는 경우를 위해 먼저 기존 것을 지운다.
+ *
+ * 문서가 짧아지면 예전의 뒤쪽 청크가 남을 수 있다. 그렇다고 기존 청크를 먼저
+ * 전부 지우면 새 저장 실패 시 복구할 원본도 사라진다. 따라서 다음 순서를 쓴다.
+ *   1. 기존 ID 목록 조회
+ *   2. 새 청크 upsert
+ *   3. 새 목록에 없는 예전 ID만 삭제
+ * 이 방식은 트랜잭션은 아니지만, 실패했을 때 "전부 사라짐"보다 "일부 예전 청크가 잠시 남음"을
+ * 선택한다. 후자는 같은 문서를 다시 인제스트하면 스스로 복구된다.
+ *
+ * 저장은 증분(incremental)으로 한다. 내용이 그대로인 청크는 다시 임베딩하지 않는다.
+ * 자세한 이유는 `src/lib/incremental.ts` 참고. 반환값의 stats 로 몇 개를 건너뛰었는지 볼 수 있다.
  */
 export async function ingestDocument(
   collectionName: string,
   input: IngestInput,
   now: number = Date.now(),
-): Promise<{ chunkCount: number; ids: string[] }> {
-  const chunks = chunkText(input.text, 120)
+): Promise<{ chunkCount: number; ids: string[]; stats: IncrementalStats }> {
+  const source = input.source.trim()
+  if (!source) throw new Error("source는 비어 있지 않은 문자열이어야 합니다")
 
-  const ids = chunks.map((_, i) => `${input.source}-chunk-${i}`)
-  const metadatas = chunks.map((_, i) => ({
-    source: input.source,
-    chunkIdx: i,
-    ingestedAt: now,
-    ...input.metadata,
+  const chunks = chunkText(input.text, 120)
+  if (chunks.length === 0) throw new Error("text에서 저장할 내용을 찾을 수 없습니다")
+
+  const ids = chunks.map((_, i) => `${source}-chunk-${i}`)
+  const pending = chunks.map((text, i) => ({
+    id: ids[i] as string,
+    text,
+    metadata: {
+      // 객체 펼치기에서는 뒤에 나온 키가 앞의 같은 키를 덮어쓴다.
+      // 시스템 필드를 마지막에 둬야 metadata.source="다른 값" 같은 입력에도 멱등성 기준이 유지된다.
+      ...input.metadata,
+      source,
+      chunkIdx: i,
+    },
+    // 적재 시각은 매번 달라지므로 지문 계산에서 빼야 증분 인덱싱이 동작한다.
+    volatileMetadata: { ingestedAt: now },
   }))
 
-  // delete 와 upsert 를 한 덩어리로 묶어서 넘긴다.
-  // 재시도가 일어나면 삭제부터 다시 하므로 중간에 끊긴 상태가 남지 않는다.
-  await withCollection(collectionName, async (collection) => {
-    await collection.delete({ where: { source: input.source } })
-    await collection.upsert({ ids, documents: chunks, metadatas })
-  })
+  const stats = await withCollection(collectionName, (collection) =>
+    incrementalUpsert(collection, source, pending),
+  )
 
-  return { chunkCount: chunks.length, ids }
+  return { chunkCount: chunks.length, ids, stats }
 }

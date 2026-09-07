@@ -1,6 +1,7 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 import { resetCollection, runExample } from "../lib/chroma.js"
+import { formatStats } from "../lib/incremental.js"
 import { ingestDocumentImageToVectorDB } from "./pipeline.js"
 import { generateSampleDocImage } from "./sample-doc.js"
 import { chatComplete, type ChatMessage } from "../lib/llm.js"
@@ -8,7 +9,7 @@ import { chatComplete, type ChatMessage } from "../lib/llm.js"
 /**
  * [OCR 스크립트 2: OCR 복원 문서 벡터 적재 및 질의응답 (Search)]
  *
- * 1. 복원된 문서를 시맨틱 청킹하여 Chroma 벡터 DB에 적재합니다.
+ * 1. 복원된 문서를 재귀적 구조 청킹하여 Chroma 벡터 DB에 적재합니다.
  * 2. 질문에 대한 관련 청크를 검색하고, LLM을 통해 정확한 답변을 생성합니다.
  */
 
@@ -31,7 +32,9 @@ await runExample("OCR 정제 문서 벡터 DB 적재 및 질의응답 (Search)",
     chunkOverlap: 80,
   })
 
-  console.log(`✅ Chroma에 ${result.chunks.length}개 청크 적재 완료`)
+  // 이 데모는 매번 컬렉션을 비우고 시작하므로 항상 "변경"으로 찍힌다.
+  // resetCollection 을 openCollection 으로 바꿔 두 번 돌리면 "건너뜀"이 늘어나는 것을 볼 수 있다.
+  console.log(`✅ Chroma에 ${result.chunks.length}개 청크 적재 완료 (${formatStats(result.stats)})`)
   result.chunks.forEach((c, idx) => {
     console.log(`  [청크 ${idx + 1}] (ID: ${result.chunkIds[idx]})`)
   })

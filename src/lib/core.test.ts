@@ -4,6 +4,7 @@ import type { Collection } from "chromadb"
 import { chunkText, slidingChunk } from "./chunking/fixed.js"
 import { evaluateMRR, evaluateRetrieval, evaluateTopK } from "./eval/metrics.js"
 import { KnowledgeGraph } from "./graph/knowledge-graph.js"
+import { contentHash, planIncrementalUpsert } from "./incremental.js"
 import { rrfMerge } from "./search/hybrid.js"
 import { normalizeWhere } from "./search/self-query.js"
 
@@ -54,6 +55,52 @@ describe("평가 지표", () => {
     assert.equal(await evaluateTopK(unusedCollection, [], 3), 0)
     assert.equal(await evaluateMRR(unusedCollection, []), 0)
     assert.deepEqual(await evaluateRetrieval([], async () => []), { recall: 0, mrr: 0 })
+  })
+})
+
+describe("증분 인덱싱", () => {
+  const chunks = [
+    { id: "doc-0", text: "첫 문단", metadata: { source: "doc" } },
+    { id: "doc-1", text: "둘째 문단", metadata: { source: "doc" } },
+  ]
+
+  it("처음 넣을 때는 전부 변경으로 잡는다", () => {
+    const plan = planIncrementalUpsert(chunks, new Map())
+    assert.deepEqual(plan.changed.map((c) => c.id), ["doc-0", "doc-1"])
+    assert.deepEqual(plan.unchangedIds, [])
+  })
+
+  it("내용이 그대로면 건너뛰고, 바뀐 청크만 다시 넣는다", () => {
+    const existing = new Map(chunks.map((c) => [c.id, contentHash(c.text, c.metadata)]))
+    const next = [chunks[0]!, { ...chunks[1]!, text: "둘째 문단 (수정됨)" }]
+
+    const plan = planIncrementalUpsert(next, existing)
+    assert.deepEqual(plan.unchangedIds, ["doc-0"])
+    assert.deepEqual(plan.changed.map((c) => c.id), ["doc-1"])
+  })
+
+  it("새 목록에서 사라진 청크는 삭제 대상이 된다", () => {
+    const existing = new Map(chunks.map((c) => [c.id, contentHash(c.text, c.metadata)]))
+    assert.deepEqual(planIncrementalUpsert([chunks[0]!], existing).staleIds, ["doc-1"])
+  })
+
+  it("지문이 없는 예전 데이터는 안전하게 다시 넣는다", () => {
+    const existing = new Map<string, string | undefined>([["doc-0", undefined]])
+    assert.deepEqual(planIncrementalUpsert([chunks[0]!], existing).changed.length, 1)
+  })
+
+  it("메타데이터 키 순서가 달라도 같은 지문이 나온다", () => {
+    assert.equal(contentHash("본문", { a: 1, b: 2 }), contentHash("본문", { b: 2, a: 1 }))
+  })
+
+  it("적재 시각처럼 매번 바뀌는 값은 지문에 영향을 주지 않는다", () => {
+    const base = { id: "doc-0", text: "첫 문단", metadata: { source: "doc" } }
+    const existing = new Map([["doc-0", contentHash(base.text, base.metadata)]])
+    const plan = planIncrementalUpsert(
+      [{ ...base, volatileMetadata: { ingestedAt: Date.now() } }],
+      existing,
+    )
+    assert.deepEqual(plan.unchangedIds, ["doc-0"])
   })
 })
 

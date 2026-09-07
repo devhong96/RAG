@@ -1,6 +1,7 @@
 import type { Collection } from "chromadb"
 import { splitByHeaders, type HeadingBlock } from "../lib/chunking/structural.js"
 import { chunkText } from "../lib/chunking/fixed.js"
+import { formatStats, incrementalUpsert } from "../lib/incremental.js"
 import type { WikiArticle } from "./corpus.js"
 
 /** 위키 실습이 쓰는 컬렉션 이름. */
@@ -96,9 +97,13 @@ export function chunkWikiArticle(article: WikiArticle): WikiChunk[] {
 /**
  * 문서들을 청킹해서 컬렉션에 적재한다.
  *
- * id 를 `문서주소#순번` 으로 고정해 두었으므로 같은 문서를 다시 넣으면 upsert 로 덮어쓴다.
- * 다만 문서가 짧아져 청크 수가 줄면 예전 뒤쪽 청크가 남으므로, 먼저 그 출처의 것을 지운다.
- * (`src/lib/documents.ts` 의 ingestDocument 와 같은 이유다.)
+ * id 를 `문서주소#순번` 으로 고정해 두었으므로 같은 문서를 다시 넣어도 중복되지 않는다.
+ * 적재는 증분(incremental) 방식이다. 내용이 그대로인 청크는 다시 임베딩하지 않고 건너뛴다.
+ *
+ * [초보자 설명] 위키 문서는 대부분 그대로이고 일부 절만 고쳐지는 일이 많다.
+ * 예전에는 문서 하나를 다시 넣으면 청크 전부를 다시 임베딩했는데, 이제는 바뀐 절만 계산한다.
+ * 두 번째 `npm run wiki:ingest` 부터는 로그에 "건너뜀"이 대부분으로 찍히고 훨씬 빨리 끝난다.
+ * 자세한 원리는 `src/lib/incremental.ts` 참고.
  */
 export async function ingestWikiArticles(
   collection: Collection,
@@ -110,14 +115,9 @@ export async function ingestWikiArticles(
     const chunks = chunkWikiArticle(article)
     if (chunks.length === 0) continue
 
-    await collection.delete({ where: { source: article.url } })
-    await collection.upsert({
-      ids: chunks.map((c) => c.id),
-      documents: chunks.map((c) => c.text),
-      metadatas: chunks.map((c) => c.metadata),
-    })
+    const stats = await incrementalUpsert(collection, article.url, chunks)
 
-    console.log(`  적재: ${article.title} → ${chunks.length}개 청크`)
+    console.log(`  적재: ${article.title} - 청크 ${chunks.length}개 (${formatStats(stats)})`)
     all.push(...chunks)
   }
 
