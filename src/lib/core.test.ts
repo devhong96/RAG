@@ -1,7 +1,9 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import type { Collection } from "chromadb"
+import { checkCitations, formatCitationWarning } from "./citations.js"
 import { chunkText, slidingChunk } from "./chunking/fixed.js"
+import { summarize } from "./eval/judge.js"
 import { evaluateMRR, evaluateRetrieval, evaluateTopK } from "./eval/metrics.js"
 import { KnowledgeGraph } from "./graph/knowledge-graph.js"
 import { ConversationStore, formatHistory, trimHistory } from "./conversation.js"
@@ -157,6 +159,53 @@ describe("대화 기록", () => {
     store.append("a", "옛질문", "옛답변")
     store.append("a", "새질문", "새답변")
     assert.deepEqual(store.get("a").map((m) => m.content), ["새질문", "새답변"])
+  })
+})
+
+describe("인용 검증", () => {
+  it("여러 형태의 인용 표기를 모두 잡아낸다", () => {
+    const check = checkCitations("첫 문장이다 [자료 1]. 둘째는 [자료2] 와 [자료 1, 3] 을 썼다.", 3)
+    assert.deepEqual(check.cited, [1, 2, 3])
+    assert.deepEqual(check.invalid, [])
+    assert.equal(check.missing, false)
+  })
+
+  it("자료 수를 넘는 번호를 지어내면 잡아낸다", () => {
+    const check = checkCitations("근거는 [자료 5] 입니다.", 3)
+    assert.deepEqual(check.invalid, [5])
+    assert.match(formatCitationWarning(check), /존재하지 않는 자료/)
+  })
+
+  it("인용이 하나도 없으면 신호를 준다", () => {
+    const check = checkCitations("에티오피아 원두는 산미가 강합니다.", 3)
+    assert.equal(check.missing, true)
+    assert.match(formatCitationWarning(check), /인용 표기가 없습니다/)
+  })
+
+  it("정상이면 경고 문자열이 비어 있다", () => {
+    assert.equal(formatCitationWarning(checkCitations("답이다 [자료 1].", 2)), "")
+  })
+})
+
+describe("심판형 LLM 집계", () => {
+  const score = (g: number, r: number) => ({ groundedness: g, relevance: r, reason: "" })
+
+  it("채점 실패는 0점으로 치지 않고 평균에서 제외한다", () => {
+    // 실패를 0점으로 치면 모델이 느린 날의 평균이 폭락해 전략 비교가 무의미해진다.
+    const summary = summarize([score(4, 5), null, score(2, 3)])
+    assert.equal(summary.judged, 2)
+    assert.equal(summary.failed, 1)
+    assert.equal(summary.groundedness, 3)
+    assert.equal(summary.relevance, 4)
+  })
+
+  it("전부 실패하면 NaN 대신 0을 돌려준다", () => {
+    assert.deepEqual(summarize([null, null]), {
+      judged: 0,
+      failed: 2,
+      groundedness: 0,
+      relevance: 0,
+    })
   })
 })
 

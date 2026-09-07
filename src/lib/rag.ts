@@ -1,3 +1,4 @@
+import { checkCitations, type CitationCheck } from "./citations.js"
 import { condenseQuestion, ConversationStore, trimHistory } from "./conversation.js"
 import { searchDocuments, type SearchResult } from "./documents.js"
 import { chatComplete, type ChatMessage } from "./llm.js"
@@ -8,13 +9,18 @@ export const RAG_COLLECTION = "rag-docs"
 export interface AnswerResult {
   answer: string
   sources: SearchResult[]
+  /**
+   * 답변의 인용 표기 검사 결과. (패턴 11)
+   * 답을 막지는 않고 신호만 준다 - 판단은 호출부가 한다.
+   */
+  citations: CitationCheck
 }
 
 export async function answerQuestion(question: string, nResults = 3): Promise<AnswerResult> {
   const sources = await searchDocuments(RAG_COLLECTION, question, nResults)
   const context = buildContext(sources)
   const answer = await chatComplete(buildMessages(question, context))
-  return { answer, sources }
+  return { answer, sources, citations: checkCitations(answer, sources.length) }
 }
 
 /** 검색 결과를 LLM 이 읽기 좋은 형태로 바꾼다. 출처와 관련도를 함께 넘긴다. */
@@ -50,7 +56,10 @@ function buildMessages(
 3. 자료 어디에도 근거가 없을 때만 "제공된 자료로는 답할 수 없습니다"라고 답하세요.
    자료에 답이 있는데 이렇게 답하면 안 됩니다.
 4. 모든 단어를 한국어로 쓰세요. 영어 단어를 섞지 마세요.
-5. 두세 문장 안에 핵심만 정리하고, 자료에 없는 정보는 덧붙이지 마세요.`,
+5. 두세 문장 안에 핵심만 정리하고, 자료에 없는 정보는 덧붙이지 마세요.
+6. 문장 끝마다 근거로 삼은 자료 번호를 [자료 1] 처럼 표기하세요.
+   여러 자료를 함께 썼다면 [자료 1, 2] 로 적습니다.
+   이 표기는 코드가 검사하므로, 실제로 받은 자료 번호만 쓰세요.`,
     },
     // 이전 대화를 system 다음, 이번 질문 앞에 그대로 끼워 넣는다.
     // 대화 기록은 "맥락"이고 자료는 "근거"라서 역할이 다르므로 섞지 않고 따로 둔다.
@@ -95,5 +104,5 @@ export async function answerInConversation(
   // 다음 질문의 압축이 없는 답변을 참고하게 되어 맥락이 오염된다.
   store.append(sessionId, question, answer)
 
-  return { answer, sources, searchQuery }
+  return { answer, sources, searchQuery, citations: checkCitations(answer, sources.length) }
 }

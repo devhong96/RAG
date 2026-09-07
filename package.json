@@ -40,6 +40,7 @@
     "wiki:search": "tsx src/wiki/search.ts",
     "ocr:parse": "tsx src/ocr/parse.ts",
     "ocr:search": "tsx src/ocr/search.ts",
+    "eval:answer": "tsx src/eval/answer-eval.ts",
     "reset": "tsx src/lectures/reset.ts"
   },
   "keywords": [],
