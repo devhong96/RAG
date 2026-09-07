@@ -56,6 +56,8 @@ npm run lec:07-08
 | **LLM 위키** | `npm run wiki:ingest`<br>`npm run wiki:search` | 위키백과 문서 적재 및 RAG 질의 ([상세 가이드](docs/llm-wiki.md)) |
 | **한글 OCR** | `npm run ocr:parse`<br>`npm run ocr:search` | 문서 이미지 텍스트/표 복원 및 RAG 질의 ([상세 가이드](docs/pipelines.md)) |
 | **대화형 RAG** | `npm run chat` | 이전 질문을 기억하는 멀티턴 RAG CLI (`/new`, `/exit`) |
+| **질의 라우팅** | `npm run route` | 질문을 벡터/그래프/검색없음 중 어디로 보낼지 결정하는 데모 |
+| **답변 품질 평가** | `npm run eval:answer` | 인용 표기 검사 + 심판형 LLM 채점 (근거성·관련성) |
 | **API 서버** | `npm run server` | Express REST API 서버 구동 (`:3000`) |
 | **로컬 테스트** | `npm test` | 외부 서비스 없이 청킹·검색 보조 로직·평가 지표 검증 |
 | **타입 검사** | `npm run typecheck` | TypeScript 정적 타입 검사 |
@@ -75,7 +77,12 @@ src/
   ├── wiki/             # 위키백과 문서 수집 → 구조 청킹 → RAG 파이프라인
   ├── lib/              # RAG 핵심 공통 모듈 (청킹, 검색, 임베딩, LLM)
   │     ├── incremental.ts    # 증분 인덱싱 (바뀐 청크만 재임베딩)
-  │     └── conversation.ts   # 대화 기록 관리 + 질문 압축
+  │     ├── batch.ts          # 배치 크기 상한 + 진행률
+  │     ├── conversation.ts   # 대화 기록 관리 + 질문 압축
+  │     ├── structured.ts     # JSON 스키마로 출력 형식 강제
+  │     ├── citations.ts      # 답변의 인용 표기 검사
+  │     ├── guardrails.ts     # 입력 인젝션 검사 + 출력 개인정보 마스킹
+  │     └── router.ts         # 질의 라우팅 (벡터/그래프/검색없음)
   └── server/           # Express REST API 백엔드
 docs/                   # 주제별 상세 기술 문서
 ```
@@ -101,5 +108,7 @@ docs/                   # 주제별 상세 기술 문서
 | **구조화 출력(패턴 2)** | LLM 응답을 JSON 스키마로 강제해 파싱 실패를 없앱니다. 프롬프트로 "JSON으로 답해"라고 부탁하던 Self-Query 필터 추출을 이 방식으로 바꿨습니다. | `src/lib/structured.ts` |
 | **인용 검증 + 심판형 LLM(패턴 11·17)** | 답변에 `[자료 n]` 표기를 요구하고 **코드로** 번호 존재 여부를 검사한 뒤(값싼 검사), 근거성·관련성을 LLM 심판이 1~5점으로 채점합니다(비싼 검사). Recall/MRR로는 안 보이던 "검색은 맞았는데 답이 틀린" 경우를 잡습니다. | `src/lib/citations.ts`, `src/lib/eval/judge.ts`, `npm run eval:answer` |
 | **대규모 색인화(패턴 8)** | 임베딩 요청은 이미 배열을 통째로 보내고 있었으므로, 실제로 빠져 있던 **배치 크기 상한**을 채웠습니다. 청크 수천 개짜리 인제스트가 요청 하나로 나가 통째로 실패하던 것을 64개 단위로 나누고 진행률을 찍습니다. | `src/lib/batch.ts` |
+| **경계 가드레일** | 신뢰할 수 없는 입력이 들어오는 문(`POST /ask`)에서 인젝션 표현과 길이를 검사하고, 나가는 답변·발췌에서 이메일·전화번호·주민번호를 가립니다. **정규식 검사는 쉽게 우회된다는 점까지** 코드 주석에 남겼습니다. | `src/lib/guardrails.ts` |
+| **질의 라우팅** | 에이전트의 최소 형태입니다. 도구 선택 한 단계만 모델에게 맡기고 실행은 코드가 합니다(`vector`/`graph`/`none`). 지금까지 "안녕하세요"에도 벡터 검색이 돌던 것을 **검색을 건너뛰는 선택지**로 잡습니다. | `src/lib/router.ts`, `npm run route` |
 
-> 의도적으로 넘긴 패턴: 스타일 제어, 사고 연쇄(CoT/ToT), 어댑터/파인튜닝, 에이전트 작업흐름, 가드레일. 고른 기준과 넘긴 이유는 [생성형 AI 설계 패턴, 무엇을 골라 넣었나](docs/generative-ai-patterns.md)에 정리했습니다.
+> 문서로만 정리하고 구현하지 않은 패턴: 어댑터/파인튜닝, 사고 연쇄(CoT/ToT), 스타일 제어. 고른 기준과 넘긴 이유, 판단이 바뀐 과정은 [생성형 AI 설계 패턴, 무엇을 골라 넣었나](docs/generative-ai-patterns.md)에 정리했습니다.
