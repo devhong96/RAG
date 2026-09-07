@@ -10,6 +10,7 @@ import { evaluateMRR, evaluateRetrieval, evaluateTopK } from "./eval/metrics.js"
 import { KnowledgeGraph } from "./graph/knowledge-graph.js"
 import { ConversationStore, formatHistory, trimHistory } from "./conversation.js"
 import { contentHash, planIncrementalUpsert } from "./incremental.js"
+import { describeRoute, heuristicRoute } from "./router.js"
 import { rrfMerge } from "./search/hybrid.js"
 import { normalizeWhere, parseWhere } from "./search/self-query.js"
 import { stripCodeFence } from "./structured.js"
@@ -300,5 +301,39 @@ describe("가드레일", () => {
     const text = "원두는 서늘한 곳에 보관하세요"
     assert.equal(maskPii(text), text)
     assert.equal(hasPii(text), false)
+  })
+})
+
+describe("질의 라우팅", () => {
+  it("문서 내용을 묻는 질문은 벡터 검색으로", () => {
+    assert.equal(heuristicRoute("에티오피아 원두는 어떤 향이 나나요?").route, "vector")
+  })
+
+  it("관계를 묻는 표현은 그래프로", () => {
+    assert.equal(heuristicRoute("로스팅과 원두 향의 관계는?").route, "graph")
+    assert.equal(heuristicRoute("이 라이브러리는 누가 만들었나요?").route, "graph")
+  })
+
+  it("인사는 검색 없이", () => {
+    assert.equal(heuristicRoute("안녕하세요").route, "none")
+    assert.equal(heuristicRoute("넌 누구야?").route, "none")
+  })
+
+  it("판단이 서지 않으면 벡터로 물러선다", () => {
+    // 잘못 골라도 검색 결과가 비어 있을 뿐이라 가장 안전한 기본값이다.
+    assert.equal(heuristicRoute("음").route, "vector")
+  })
+
+  it("고른 이유를 항상 남긴다", () => {
+    // 이유가 없으면 라우팅이 틀렸을 때 어디서 어긋났는지 추적할 수 없다.
+    for (const q of ["안녕", "관계는?", "향은?"]) {
+      assert.ok(heuristicRoute(q).reason.length > 0, q)
+    }
+  })
+
+  it("경로 설명에 이유가 함께 들어간다", () => {
+    const text = describeRoute({ route: "none", reason: "인사입니다" })
+    assert.match(text, /검색 없이/)
+    assert.match(text, /인사입니다/)
   })
 })

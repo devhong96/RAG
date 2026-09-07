@@ -41,6 +41,7 @@
     "ocr:parse": "tsx src/ocr/parse.ts",
     "ocr:search": "tsx src/ocr/search.ts",
     "eval:answer": "tsx src/eval/answer-eval.ts",
+    "route": "tsx src/route-demo.ts",
     "reset": "tsx src/lectures/reset.ts"
   },
   "keywords": [],
