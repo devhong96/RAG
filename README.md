@@ -23,6 +23,7 @@ ChromaDB, Ollama, Neo4j, OCR 기반의 **검색 증강 생성(RAG)** 학습 및 
 
 ### 1. 사전 환경 구성
 ```bash
+node --version             # node:sqlite 사용을 위해 Node.js 22.5 이상
 npm install               # 의존성 설치
 pipx install chromadb     # Chroma CLI 설치 (없는 경우)
 ollama pull bge-m3        # 1024차원 한국어 임베딩 모델
@@ -59,6 +60,7 @@ npm run lec:07-08
 | **질의 라우팅** | `npm run route` | 질문을 벡터/그래프/검색없음 중 어디로 보낼지 결정하는 데모 |
 | **답변 품질 평가** | `npm run eval:answer` | 인용 표기 검사 + 심판형 LLM 채점 (근거성·관련성) |
 | **API 서버** | `npm run server` | Express REST API 서버 구동 (`:3000`) |
+| **SQLite 의미 검색** | `npm run lab:sqlite` | SQLite 정형 필터 + 정확한 Flat 벡터 검색 기준 구현 |
 | **로컬 테스트** | `npm test` | 외부 서비스 없이 청킹·검색 보조 로직·평가 지표 검증 |
 | **타입 검사** | `npm run typecheck` | TypeScript 정적 타입 검사 |
 | **초기화** | `npm run reset` | 테스트 컬렉션 데이터 초기화 |
@@ -75,6 +77,7 @@ src/
   ├── graph-db/         # Neo4j 지식 그래프 클라이언트 및 스크립트
   ├── ocr/              # 한글 OCR 엔진 및 문서/표 복원 파이프라인
   ├── wiki/             # 위키백과 문서 수집 → 구조 청킹 → RAG 파이프라인
+  ├── sqlite/           # SQLite 의미 검색 + 영속 대화 기록
   ├── lib/              # RAG 핵심 공통 모듈 (청킹, 검색, 임베딩, LLM)
   │     ├── incremental.ts    # 증분 인덱싱 (바뀐 청크만 재임베딩)
   │     ├── batch.ts          # 배치 크기 상한 + 진행률
@@ -96,10 +99,10 @@ docs/                   # 주제별 상세 기술 문서
 | 주제 | 내용 | 관련 위치 |
 |:---|:---|:---|
 | **증분 인덱싱** | 같은 문서를 다시 넣을 때 내용 지문(sha256)을 비교해 **바뀐 청크만 재임베딩**합니다. 서버 인제스트·위키·OCR 파이프라인에 모두 적용했고, `POST /documents` 응답과 스크립트 로그에 `변경/건너뜀/삭제` 수가 찍힙니다. | `src/lib/incremental.ts` |
-| **멀티턴 대화 RAG** | 이전 대화를 참고해 후속 질문("그거 왜 필요한데요?")을 독립 질의로 다시 쓴 뒤 검색합니다. **검색에는 압축한 질의, 생성에는 원래 질문과 대화 기록**을 씁니다. `POST /ask` 에 `sessionId` 를 넣으면 대화형으로, 없으면 기존 단발 동작 그대로 동작합니다. | `src/lib/conversation.ts`, `npm run chat` |
+| **멀티턴 대화 RAG** | 이전 대화를 참고해 후속 질문("그거 왜 필요한데요?")을 독립 질의로 다시 쓴 뒤 검색합니다. **검색에는 압축한 질의, 생성에는 원래 질문과 대화 기록**을 씁니다. API 기록은 SQLite에 영속화하고 CLI는 가벼운 인메모리 저장소를 씁니다. | `src/lib/conversation.ts`, `src/sqlite/conversation-store.ts`, `npm run chat` |
 | **ANN 인덱스·양자화 문서** | Flat / IVF / HNSW 세 계열과 재현율↔속도 다이얼(`nprobe`, `ef_search`), SQ·BQ·PQ 양자화를 정리했습니다. Chroma 가 무엇을 대신 정해주고 있는지도 함께 적었습니다. | [docs/vector-db.md](docs/vector-db.md) 3-1~3-3절 |
 
-> 도서 목차 대비 아직 다루지 않는 주제: SQLite/PostgreSQL 위에서의 벡터 검색(pgvector), Word2Vec에서 트랜스포머로 이어지는 임베딩 계보.
+> 전체 목차의 구현·대체 구현·미구현 경계는 [참고 도서 목차 반영표](docs/book-coverage.md)를 기준으로 관리합니다. SQLite Flat 검색과 임베딩 계보는 보강됐으며, pgvector·FAISS 런타임·arXiv/PDF 데이터 파이프라인은 아직 별도 실습 범위입니다.
 
 두 번째 참고 도서(*생성형 AI 설계 패턴*)에서는 **RAG·벡터DB 학습에 바로 이어지는 패턴만** 골라 적용했습니다.
 

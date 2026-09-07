@@ -6,6 +6,10 @@
 
 ## 문서 지도
 
+- [참고 도서 목차 반영표](book-coverage.md) — 구현·대체 구현·미구현의 경계를 한눈에 확인
+- [임베딩 계보](embedding-lineage.md) — Word2Vec, Doc2Vec, 트랜스포머와 벡터 연산
+- [SQLite 의미 검색과 장기 기억](sqlite-vector-search.md) — 정형 데이터+벡터와 대화 영속화 실습
+
 ```text
 RAG가 필요한가?
     ↓
