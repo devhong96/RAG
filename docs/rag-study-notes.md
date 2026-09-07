@@ -19,6 +19,7 @@
 - [RAG 실전 구현과 청킹 전략](rag-practical-implementation.md) — 대안 스택과 문서 자르기; 일부는 Python 기준
 - [GraphRAG 설계](rag-graphdb-hybrid-pipeline.md) — 벡터가 못 잡는 구조적 연결
 - [하이브리드 RAG 워크스루](rag-hybrid-walkthrough.md) — GraphRAG의 데이터를 단계별로 추적하는 장문 해설
+- [생성형 AI 설계 패턴, 무엇을 골라 넣었나](generative-ai-patterns.md) — 패턴 32개 중 4개만 넣은 기준과 넘긴 이유
 
 ## 코드와의 연결
 
