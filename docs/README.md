@@ -171,9 +171,10 @@ npm run server
 
 문서 여러 개에 흩어진 인물·조직·사건 관계를 따라가야 할 때 선택한다.
 
-1. [GraphRAG 설계](rag-graphdb-hybrid-pipeline.md)
-2. [하이브리드 RAG 워크스루](rag-hybrid-walkthrough.md)
-3. [Graph DB 실행 가이드](pipelines.md#1-graph-db-neo4j-파이프라인-srcgraph-db)
+1. [그래프 DB 입문](graph-db-learning.md) — 노드·관계·Cypher·탐색부터 실습
+2. [GraphRAG 설계](rag-graphdb-hybrid-pipeline.md)
+3. [하이브리드 RAG 워크스루](rag-hybrid-walkthrough.md)
+4. [Graph DB 실행 가이드](pipelines.md#1-graph-db-neo4j-파이프라인-srcgraph-db)
 
 워크스루는 입문 문서가 아니다. 벡터 검색과 기본 RAG를 실행한 뒤 데이터가 단계별로 어떤 모양으로 바뀌는지 추적할 때 읽는다.
 
