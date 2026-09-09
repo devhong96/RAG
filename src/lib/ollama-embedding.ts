@@ -1,5 +1,5 @@
 // [자바 노트] import 경로가 ".js" 인데 실제 파일은 .ts 다. 오타가 아니라 ESM 규칙이다.
-//            자세한 내용은 docs/자바개발자를-위한-노트.md 1번 참고.
+//            자세한 내용은 docs/05-reference/자바개발자를-위한-노트.md 1번 참고.
 // [자바 노트] "import type" 은 타입만 가져온다. 컴파일하면 이 줄은 사라진다.
 import type { EmbeddingFunction, EmbeddingFunctionSpace } from "chromadb"
 import { config } from "../config.js"

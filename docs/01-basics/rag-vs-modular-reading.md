@@ -1,12 +1,12 @@
 # RAG 도입 기준과 모듈형 지식 주입
 
-> 학습 위치: [전체 문서 지도](README.md) · 다음: [RAG 전체 흐름](rag-overall-flow.md)
+> 학습 위치: [전체 문서 지도](../README.md) · 다음: [RAG 전체 흐름](../01-basics/rag-overall-flow.md)
 
 > 모든 AI 시스템에 무조건 RAG(벡터 DB)가 필요한 것은 아니다. 데이터의 규모와 성격에 따라 '검색'을 쓸지, '직접 읽기'를 쓸지 아키텍처를 결정해야 한다.
 
 > 관련 문서:
-> - [rag-overall-flow.md](rag-overall-flow.md) — RAG를 쓰기로 했을 때의 실행 순서
-> - [rag-practical-implementation.md](rag-practical-implementation.md) — 실제 구축 스택과 청킹 전략
+> - [rag-overall-flow.md](../01-basics/rag-overall-flow.md) — RAG를 쓰기로 했을 때의 실행 순서
+> - [rag-practical-implementation.md](../02-pipeline/rag-practical-implementation.md) — 실제 구축 스택과 청킹 전략
 
 > **확신도 표기 원칙** — 아키텍처 판단 기준은 확실, **상용 챗봇(챗GPT·클로드)의 대화 기억 구현은 비공개라 추측**으로 표기한다.
 

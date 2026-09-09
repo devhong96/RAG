@@ -1,6 +1,6 @@
 # 그래프 DB 입문 — 모델링부터 Neo4j와 GraphRAG까지
 
-> 학습 위치: [전체 학습 가이드](README.md) · 다음: [GraphRAG 설계](rag-graphdb-hybrid-pipeline.md) · 실행: [Graph DB 파이프라인](pipelines.md#1-graph-db-neo4j-파이프라인-srcgraph-db)
+> 학습 위치: [전체 학습 가이드](../README.md) · 다음: [GraphRAG 설계](../03-graphrag/rag-graphdb-hybrid-pipeline.md) · 실행: [Graph DB 파이프라인](../05-reference/pipelines.md#1-graph-db-neo4j-파이프라인-srcgraph-db)
 
 이 문서는 GraphRAG보다 먼저 읽는 그래프 DB 기초 문서다. 목표는 Neo4j 명령을 외우는 것이 아니라, **어떤 데이터를 노드로 만들고 어떤 연결을 관계로 만들어야 하는지**, 그리고 그래프 탐색 결과가 RAG에 어떻게 들어가는지를 이해하는 것이다.
 
@@ -59,7 +59,7 @@
   → 벡터 검색과 합쳐 GraphRAG 실행
 ```
 
-처음에는 [GraphRAG 설계](rag-graphdb-hybrid-pipeline.md)나 긴 [하이브리드 워크스루](rag-hybrid-walkthrough.md)부터 읽지 않는다. 그래프 DB 자체와 RAG 결합을 동시에 배우면 `MATCH`가 검색한 것인지 임베딩이 검색한 것인지 구분하기 어렵다.
+처음에는 [GraphRAG 설계](../03-graphrag/rag-graphdb-hybrid-pipeline.md)나 긴 [하이브리드 워크스루](../03-graphrag/rag-hybrid-walkthrough.md)부터 읽지 않는다. 그래프 DB 자체와 RAG 결합을 동시에 배우면 `MATCH`가 검색한 것인지 임베딩이 검색한 것인지 구분하기 어렵다.
 
 ## 2. 그래프 DB는 무엇을 다르게 저장하는가
 
@@ -752,7 +752,7 @@ RETURN path
 
 `*1..2`는 한 홉부터 두 홉까지 탐색한다. 화살표 끝을 생략한 `-[]-`는 관계 방향을 무시하고 양방향으로 찾는다. 저장된 관계의 의미가 사라지는 것은 아니다. 질의할 때 양쪽 방향으로 통과할 수 있게 한 것이다.
 
-현재 [`client.ts`](../src/graph-db/client.ts)는 깊이를 문자열 치환하기 전에 1~5로 제한하고, 나머지 사용자 값은 `$startName` 같은 파라미터로 전달한다. 값은 문자열 연결보다 파라미터로 보내야 따옴표 오류와 Cypher 인젝션 위험을 줄일 수 있다.
+현재 [`client.ts`](../../src/graph-db/client.ts)는 깊이를 문자열 치환하기 전에 1~5로 제한하고, 나머지 사용자 값은 `$startName` 같은 파라미터로 전달한다. 값은 문자열 연결보다 파라미터로 보내야 따옴표 오류와 Cypher 인젝션 위험을 줄일 수 있다.
 
 ### 파라미터를 사용하는 이유
 
@@ -776,7 +776,7 @@ const query = `MATCH (e:Entity {name: '${userInput}'}) RETURN e`
 
 ## 7. 그래프 탐색은 어떻게 동작하는가
 
-가장 작은 구현은 [`KnowledgeGraph`](../src/lib/graph/knowledge-graph.ts)다. Neo4j 없이 `Map`과 배열로 만든 인접 리스트이며, 가까운 관계부터 찾기 위해 BFS를 사용한다.
+가장 작은 구현은 [`KnowledgeGraph`](../../src/lib/graph/knowledge-graph.ts)다. Neo4j 없이 `Map`과 배열로 만든 인접 리스트이며, 가까운 관계부터 찾기 위해 BFS를 사용한다.
 
 ```text
 queue        앞으로 방문할 노드의 대기열
@@ -833,12 +833,12 @@ visitedEdges 이미 결과에 담은 관계 집합
 
 ### 코드 읽는 순서
 
-1. [`knowledge-graph.ts`](../src/lib/graph/knowledge-graph.ts)의 `addRelation`과 `traverse`를 읽는다.
-2. [`core.test.ts`](../src/lib/core.test.ts)의 `지식 그래프` 테스트로 2홉 결과를 확인한다.
-3. [`seed.ts`](../src/graph-db/seed.ts)의 `RELATIONS`를 그림으로 옮긴다.
-4. [`client.ts`](../src/graph-db/client.ts)에서 같은 동작을 Cypher로 어떻게 바꿨는지 본다.
-5. [`graph-rag.ts`](../src/lib/search/graph-rag.ts)에서 그래프 팩트와 벡터 문서가 합쳐지는 지점을 찾는다.
-6. [`search.ts`](../src/graph-db/search.ts)에서 검색 결과를 재사용해 중복 검색을 피하는 흐름을 확인한다.
+1. [`knowledge-graph.ts`](../../src/lib/graph/knowledge-graph.ts)의 `addRelation`과 `traverse`를 읽는다.
+2. [`core.test.ts`](../../src/lib/core.test.ts)의 `지식 그래프` 테스트로 2홉 결과를 확인한다.
+3. [`seed.ts`](../../src/graph-db/seed.ts)의 `RELATIONS`를 그림으로 옮긴다.
+4. [`client.ts`](../../src/graph-db/client.ts)에서 같은 동작을 Cypher로 어떻게 바꿨는지 본다.
+5. [`graph-rag.ts`](../../src/lib/search/graph-rag.ts)에서 그래프 팩트와 벡터 문서가 합쳐지는 지점을 찾는다.
+6. [`search.ts`](../../src/graph-db/search.ts)에서 검색 결과를 재사용해 중복 검색을 피하는 흐름을 확인한다.
 
 ## 9. 실습 1 — 외부 DB 없이 탐색 원리 보기
 
@@ -914,7 +914,7 @@ RETURN path
 
 질문이 `게이샤 농장이 있는 지역의 기후 특징`이라면 벡터 검색은 `게이샤`나 `기후`가 들어간 청크를 찾는다. 그래프는 `게이샤 → 농장 → 지역 → 기후` 연결을 따라 질문에 직접 등장하지 않은 `보케테`와 `바하레케`를 후보로 가져올 수 있다.
 
-이 저장소의 [`searchGraphRAG`](../src/lib/search/graph-rag.ts)는 다음 순서로 동작한다.
+이 저장소의 [`searchGraphRAG`](../../src/lib/search/graph-rag.ts)는 다음 순서로 동작한다.
 
 ```text
 질문

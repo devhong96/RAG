@@ -1,13 +1,13 @@
 # 벡터DB (임베딩 · ANN 인덱스 · 하이브리드 검색)
 
-> 학습 위치: [전체 문서 지도](README.md) · 이전: [RAG 전체 흐름](rag-overall-flow.md) · 다음: [RAG 상세 파이프라인](rag-pipeline.md)
+> 학습 위치: [전체 문서 지도](../README.md) · 이전: [RAG 전체 흐름](../01-basics/rag-overall-flow.md) · 다음: [RAG 상세 파이프라인](../02-pipeline/rag-pipeline.md)
 
 > **한 줄 정의:** 벡터DB는 *"텍스트를 좌표로 바꿔 저장하고 **가까운 것**을 찾는"* DB다. 새로운 종류의 저장소가 아니라 **거리 기반 근사 조회라는 접근 경로를 가진 DB**이며, B+Tree가 고차원 근접 질의에 못 쓰이기 때문에 별도로 존재한다.
 
 > 관련 문서:
-> - [rag-pipeline.md](rag-pipeline.md) — 이 저장소를 사이에 두고 붙는 RAG의 오프라인/온라인 파이프라인
-> - [../database/db-index.md](../../cs-study/database/db-index.md) — B+Tree 인덱스. 왜 벡터에 못 쓰는지의 대조군
-> - [../database/index-random-io-and-covering.md](../../cs-study/database/index-random-io-and-covering.md) — 인덱스로 좁히고 정밀 조건으로 거르는 2단 구조
+> - [rag-pipeline.md](../02-pipeline/rag-pipeline.md) — 이 저장소를 사이에 두고 붙는 RAG의 오프라인/온라인 파이프라인
+> - [../database/db-index.md](../../../cs-study/database/db-index.md) — B+Tree 인덱스. 왜 벡터에 못 쓰는지의 대조군
+> - [../database/index-random-io-and-covering.md](../../../cs-study/database/index-random-io-and-covering.md) — 인덱스로 좁히고 정밀 조건으로 거르는 2단 구조
 
 > **확신도 표기 원칙** — 원리와 자료구조는 확실, 용량 계산은 어림, 개별 제품의 삭제/필터 구현 동작은 **제품별로 다르며 전부 확인하지 않았다.**
 

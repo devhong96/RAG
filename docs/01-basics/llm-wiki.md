@@ -20,12 +20,12 @@ RAG 에서 검색 결과를 너무 많이 넣으면 이 한계에 부딪히고, 
 (가운데 내용을 놓치는 *lost in the middle* 현상). 그래서 `nResults` 를 3~5 정도로 두고 재랭킹으로 추리는 것입니다.
 
 ### 임베딩 모델 vs 생성 모델
-같은 Ollama 서버를 쓰지만 역할이 완전히 다릅니다. 이 저장소의 설정은 [`src/config.ts`](../src/config.ts) 한곳에 있습니다.
+같은 Ollama 서버를 쓰지만 역할이 완전히 다릅니다. 이 저장소의 설정은 [`src/config.ts`](../../src/config.ts) 한곳에 있습니다.
 
 | 구분 | 이 저장소의 기본값 | 하는 일 | 코드 |
 |:---|:---|:---|:---|
-| 임베딩 모델 | `bge-m3` (1024차원) | 텍스트 → 벡터. 검색용 | [`ollama-embedding.ts`](../src/lib/ollama-embedding.ts) |
-| 생성 모델 | `OLLAMA_CHAT_MODEL` (기본 `gemma4:26b`) | 근거를 읽고 답변 문장 생성 | [`llm.ts`](../src/lib/llm.ts) |
+| 임베딩 모델 | `bge-m3` (1024차원) | 텍스트 → 벡터. 검색용 | [`ollama-embedding.ts`](../../src/lib/ollama-embedding.ts) |
+| 생성 모델 | `OLLAMA_CHAT_MODEL` (기본 `gemma4:26b`) | 근거를 읽고 답변 문장 생성 | [`llm.ts`](../../src/lib/llm.ts) |
 
 > ⚠️ **임베딩 모델을 바꾸면 벡터 공간 자체가 달라집니다.** 기존에 적재한 벡터는 재사용할 수 없으니
 > `npm run reset` 후 전부 다시 적재해야 합니다. 반면 생성 모델은 언제든 바꿔도 됩니다.
@@ -33,7 +33,7 @@ RAG 에서 검색 결과를 너무 많이 넣으면 이 한계에 부딪히고, 
 ### 온도 (Temperature)와 top-p
 생성 시점의 무작위성을 조절합니다. `0` 에 가까우면 거의 결정적으로 가장 확률 높은 토큰을 고릅니다.
 RAG 는 "자료에 있는 내용을 그대로 옮기는" 작업이므로 낮은 온도가 맞습니다.
-그래서 [`chatComplete`](../src/lib/llm.ts) 의 기본값이 `temperature: 0` 입니다.
+그래서 [`chatComplete`](../../src/lib/llm.ts) 의 기본값이 `temperature: 0` 입니다.
 
 ### 환각 (Hallucination)
 모델이 사실이 아닌 내용을 그럴듯한 문장으로 지어내는 현상입니다.
@@ -45,7 +45,7 @@ RAG 는 "자료에 있는 내용을 그대로 옮기는" 작업이므로 낮은 
 3. 답변에 출처를 밝히게 해서 사람이 검증할 수 있게 한다
 
 ### RAG 프롬프트 설계 세 가지 축
-[`src/lib/rag.ts`](../src/lib/rag.ts) 의 시스템 프롬프트가 이 구조를 그대로 따릅니다.
+[`src/lib/rag.ts`](../../src/lib/rag.ts) 의 시스템 프롬프트가 이 구조를 그대로 따릅니다.
 
 | 축 | 내용 | 예시 문구 |
 |:---|:---|:---|
@@ -57,7 +57,7 @@ RAG 는 "자료에 있는 내용을 그대로 옮기는" 작업이므로 낮은 
 문단 본문만 잘라서 임베딩하면 "이 값이 0에 가까울수록 비슷하다는 뜻이다" 같은 문장은
 **무엇에 대한 이야기인지 벡터에 전혀 남지 않습니다.** 사람은 위쪽 제목을 보고 알지만 임베딩 모델은 넘겨준 글자만 봅니다.
 그래서 청크 앞에 `문서 제목 > 절 제목` 한 줄을 붙입니다. 비용은 거의 없고 검색 품질은 눈에 띄게 올라갑니다.
-아래 위키 파이프라인([`src/wiki/pipeline.ts`](../src/wiki/pipeline.ts))이 이 방식을 씁니다.
+아래 위키 파이프라인([`src/wiki/pipeline.ts`](../../src/wiki/pipeline.ts))이 이 방식을 씁니다.
 
 ---
 
@@ -69,8 +69,8 @@ RAG 는 "자료에 있는 내용을 그대로 옮기는" 작업이므로 낮은 
 ### 실행 스크립트
 | 스크립트 | 소스 파일 | 설명 |
 |:---|:---|:---|
-| `npm run wiki:ingest` | [`ingest.ts`](../src/wiki/ingest.ts) | 위키백과 문서 내려받기 → 구조 청킹 → `llm-wiki` 컬렉션 적재 |
-| `npm run wiki:search` | [`search.ts`](../src/wiki/search.ts) | 유사도 검색 → 근거 조립 → LLM 답변 생성 |
+| `npm run wiki:ingest` | [`ingest.ts`](../../src/wiki/ingest.ts) | 위키백과 문서 내려받기 → 구조 청킹 → `llm-wiki` 컬렉션 적재 |
+| `npm run wiki:search` | [`search.ts`](../../src/wiki/search.ts) | 유사도 검색 → 근거 조립 → LLM 답변 생성 |
 
 ```bash
 npm run wiki:ingest                             # 기본 3개 문서 (LLM / 트랜스포머 / 워드 임베딩)
@@ -85,10 +85,10 @@ npm run wiki:search -- "워드 임베딩은 무엇인가요?"
 ### 내부 동작
 | 단계 | 파일 | 하는 일 |
 |:---|:---|:---|
-| 1. 수집 | [`fetch.ts`](../src/wiki/fetch.ts) | 위키백과 `action=query&prop=extracts` 로 순수 텍스트 수집. `== 제목 ==` 을 마크다운 `##` 으로 변환 |
-| 2. 폴백 | [`corpus.ts`](../src/wiki/corpus.ts) | 네트워크가 막히면 같은 주제의 로컬 사본으로 자동 대체 |
-| 3. 청킹 | [`pipeline.ts`](../src/wiki/pipeline.ts) | 리드 문단을 `개요` 절로 분리 → 헤딩 단위 분할 → 500자 단위 재분할 → `제목 > 절` 접두어 부착 |
-| 4. 적재 | [`pipeline.ts`](../src/wiki/pipeline.ts) | `출처 주소#순번` 을 id 로 upsert (재실행해도 중복 없음) |
+| 1. 수집 | [`fetch.ts`](../../src/wiki/fetch.ts) | 위키백과 `action=query&prop=extracts` 로 순수 텍스트 수집. `== 제목 ==` 을 마크다운 `##` 으로 변환 |
+| 2. 폴백 | [`corpus.ts`](../../src/wiki/corpus.ts) | 네트워크가 막히면 같은 주제의 로컬 사본으로 자동 대체 |
+| 3. 청킹 | [`pipeline.ts`](../../src/wiki/pipeline.ts) | 리드 문단을 `개요` 절로 분리 → 헤딩 단위 분할 → 500자 단위 재분할 → `제목 > 절` 접두어 부착 |
+| 4. 적재 | [`pipeline.ts`](../../src/wiki/pipeline.ts) | `출처 주소#순번` 을 id 로 upsert (재실행해도 중복 없음) |
 
 ### 이 실습에서 챙겨갈 점
 
@@ -105,5 +105,5 @@ npm run wiki:search -- "워드 임베딩은 무엇인가요?"
 * **타임아웃은 필수**: `AbortSignal.timeout()` 없이 외부 API 를 부르면 응답 없는 네트워크에서 스크립트가 무한정 멈춥니다.
 
 ### 이어서 볼 것
-* 청킹 전략 비교 → [`docs/lectures.md`](lectures.md) 의 15강(청킹 전략 6종), 27강(Parent-Child)
-* 검색 품질 개선(하이브리드 19강 · 재랭킹 29~30강) → [`docs/rag-architecture.md`](rag-architecture.md)
+* 청킹 전략 비교 → [`docs/lectures.md`](../05-reference/lectures.md) 의 15강(청킹 전략 6종), 27강(Parent-Child)
+* 검색 품질 개선(하이브리드 19강 · 재랭킹 29~30강) → [`docs/rag-architecture.md`](../02-pipeline/rag-architecture.md)

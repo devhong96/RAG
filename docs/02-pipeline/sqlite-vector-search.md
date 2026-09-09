@@ -1,6 +1,6 @@
 # SQLite 의미 검색과 대화 장기 기억
 
-> 학습 위치: [전체 문서 지도](README.md) · 관련 코드: [`src/sqlite/`](../src/sqlite)
+> 학습 위치: [전체 문서 지도](../README.md) · 관련 코드: [`src/sqlite/`](../../src/sqlite)
 
 이 실습의 목표는 SQLite를 대규모 벡터 DB로 쓰는 것이 아니다. **정형 데이터와 벡터를 같은 레코드에 저장할 수 있다는 것**, 그리고 저장 가능성과 빠른 검색 가능성은 별개라는 것을 코드로 확인하는 데 있다.
 
@@ -13,7 +13,7 @@ SQLite에 벡터를 저장하는 것과 벡터 인덱스로 빠르게 검색하�
 | 이 저장소의 기준 구현 | JSON `TEXT` | 애플리케이션에서 전부 비교 | 원리 학습, 소량 데이터, ANN 평가 정답지 |
 | SQLite 벡터 확장 | 확장 전용 벡터 타입 | 확장의 ANN/벡터 함수 | 큰 데이터와 낮은 지연시간 |
 
-[`SqliteVectorStore`](../src/sqlite/vector-store.ts)는 첫 번째 방식이다. 정확한 Flat 검색이므로 결과를 근사하지 않지만 데이터가 늘면 선형으로 느려진다. 확장 기반 VSS를 구현했다고 오해해서는 안 된다.
+[`SqliteVectorStore`](../../src/sqlite/vector-store.ts)는 첫 번째 방식이다. 정확한 Flat 검색이므로 결과를 근사하지 않지만 데이터가 늘면 선형으로 느려진다. 확장 기반 VSS를 구현했다고 오해해서는 안 된다.
 
 예를 들어 문서가 100개면 질문 한 번에 최대 100개 벡터를 비교한다. 문서가 100만 개가 되어도 같은 코드는 동작하지만 최대 100만 번 비교해야 한다. ANN 인덱스는 이 전부 비교를 피하려고 일부 후보만 탐색하며, 그 대가로 진짜 최근접 문서를 놓칠 수 있다.
 
@@ -55,17 +55,17 @@ CREATE TABLE vector_documents (
 
 ## 4. 대화 장기 기억
 
-API의 `sessionId` 대화는 [`SqliteConversationStore`](../src/sqlite/conversation-store.ts)에 저장된다. 서버를 재시작해도 최근 대화가 남고, 세션별로 최근 5턴만 유지한다. 기본 파일은 `data/conversations.sqlite`이며 `CONVERSATION_DB` 환경변수로 바꿀 수 있다.
+API의 `sessionId` 대화는 [`SqliteConversationStore`](../../src/sqlite/conversation-store.ts)에 저장된다. 서버를 재시작해도 최근 대화가 남고, 세션별로 최근 5턴만 유지한다. 기본 파일은 `data/conversations.sqlite`이며 `CONVERSATION_DB` 환경변수로 바꿀 수 있다.
 
 장기 기억이라고 해서 모든 대화를 프롬프트에 넣지는 않는다. 저장은 오래 하되 검색·생성에는 최근 턴만 넣어 컨텍스트 크기를 제한한다.
 
 ## 5. 코드를 읽는 순서
 
-1. [`vector-store.ts`](../src/sqlite/vector-store.ts)의 `CREATE TABLE`에서 한 행의 구성을 확인한다.
+1. [`vector-store.ts`](../../src/sqlite/vector-store.ts)의 `CREATE TABLE`에서 한 행의 구성을 확인한다.
 2. `upsert`에서 기본키 충돌 시 갱신하는 부분과 트랜잭션 경계를 찾는다.
 3. `search`에서 metadata 필터 뒤에 코사인 Top-K를 적용하는 순서를 확인한다.
-4. [`sqlite-semantic-search.ts`](../src/lectures/sqlite-semantic-search.ts)에서 임베딩 모델과 저장소가 어디서 연결되는지 본다.
-5. [`core.test.ts`](../src/lib/core.test.ts)의 `SQLite 의미 검색` 테스트에서 벡터를 직접 바꿔 순위 변화를 확인한다.
+4. [`sqlite-semantic-search.ts`](../../src/lectures/sqlite-semantic-search.ts)에서 임베딩 모델과 저장소가 어디서 연결되는지 본다.
+5. [`core.test.ts`](../../src/lib/core.test.ts)의 `SQLite 의미 검색` 테스트에서 벡터를 직접 바꿔 순위 변화를 확인한다.
 
 실습하면서 `category: "coffee"` 필터를 제거해 본다. 벡터가 우연히 가까운 다른 카테고리 문서가 후보에 들어올 수 있다. 정형 필터와 의미 검색을 함께 쓰는 이유를 가장 작게 확인하는 실험이다.
 

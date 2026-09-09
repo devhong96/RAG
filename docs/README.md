@@ -8,6 +8,18 @@
 개념을 읽는다 → 대응 코드를 찾는다 → 직접 실행한다 → 결과가 왜 나왔는지 설명한다
 ```
 
+## 문서 지도
+
+문서는 읽는 단계별로 다섯 디렉터리에 나눠 두었다. 아래 표에서 필요한 묶음을 고르고, 순서가 고민되면 1절부터 따라간다.
+
+| 디렉터리 | 무엇을 담았나 | 문서 |
+|---|---|---|
+| [`01-basics/`](01-basics/) | RAG·벡터·임베딩의 기본 개념 | [RAG 도입 기준](01-basics/rag-vs-modular-reading.md) · [RAG 전체 흐름](01-basics/rag-overall-flow.md) · [벡터 DB와 임베딩](01-basics/vector-db.md) · [임베딩 계보](01-basics/embedding-lineage.md) · [LLM 위키](01-basics/llm-wiki.md) |
+| [`02-pipeline/`](02-pipeline/) | 파이프라인 설계와 이 저장소의 구현 | [RAG 상세 파이프라인](02-pipeline/rag-pipeline.md) · [실전 구현과 청킹 전략](02-pipeline/rag-practical-implementation.md) · [SQLite 의미 검색](02-pipeline/sqlite-vector-search.md) · [현재 코드 아키텍처](02-pipeline/rag-architecture.md) |
+| [`03-graphrag/`](03-graphrag/) | 그래프 DB와 GraphRAG 확장 | [그래프 DB 입문](03-graphrag/graph-db-learning.md) · [GraphRAG 설계](03-graphrag/rag-graphdb-hybrid-pipeline.md) · [하이브리드 RAG 워크스루](03-graphrag/rag-hybrid-walkthrough.md) |
+| [`04-patterns/`](04-patterns/) | 설계 패턴과 범위 정리 | [생성형 AI 설계 패턴](04-patterns/generative-ai-patterns.md) · [도서 목차 반영표](04-patterns/book-coverage.md) · [개념 노트 모음](04-patterns/rag-study-notes.md) |
+| [`05-reference/`](05-reference/) | 실행할 때 찾아보는 참고 자료 | [강의 실습 목록](05-reference/lectures.md) · [파이프라인 실행 가이드](05-reference/pipelines.md) · [문제 해결](05-reference/troubleshooting.md) · [자바 개발자를 위한 노트](05-reference/자바개발자를-위한-노트.md) |
+
 ## 0. 시작 전에 준비할 것
 
 이 프로젝트는 Node.js 22.5 이상, ChromaDB, Ollama를 사용한다. 처음 한 번만 다음 순서로 준비한다.
@@ -37,8 +49,8 @@ npm run db
 
 RAG가 처음이고 전체 모양만 보고 싶을 때 선택한다.
 
-1. [RAG 전체 흐름](rag-overall-flow.md)
-2. [벡터 DB와 임베딩](vector-db.md) 1~3장
+1. [RAG 전체 흐름](01-basics/rag-overall-flow.md)
+2. [벡터 DB와 임베딩](01-basics/vector-db.md) 1~3장
 3. [`13-14-similarity-search.ts`](../src/lectures/13-14-similarity-search.ts)
 4. [`23-24-rag.ts`](../src/lectures/23-24-rag.ts)
 
@@ -57,7 +69,7 @@ npm run lec:23-24
 
 ### 깊이 공부하는 코스
 
-2~6절을 끝낸 뒤 **7절 확장 코스**와 [생성형 AI 설계 패턴](generative-ai-patterns.md)을 읽는다. 참고 도서와 정확히 같은 기술 스택인지 확인하려면 [도서 목차 반영표](book-coverage.md)를 같이 본다.
+2~6절을 끝낸 뒤 **7절 확장 코스**와 [생성형 AI 설계 패턴](04-patterns/generative-ai-patterns.md)을 읽는다. 참고 도서와 정확히 같은 기술 스택인지 확인하려면 [도서 목차 반영표](04-patterns/book-coverage.md)를 같이 본다.
 
 ## 2. 1단계 — 큰 그림부터 잡기
 
@@ -65,10 +77,10 @@ npm run lec:23-24
 
 | 순서 | 읽을 문서 | 집중할 질문 | 완료 기준 |
 |:---:|---|---|---|
-| 1 | [RAG 도입 기준](rag-vs-modular-reading.md) | 모든 질문에 RAG가 필요한가? | RAG와 파일 직접 읽기의 선택 기준을 말한다 |
-| 2 | [RAG 전체 흐름](rag-overall-flow.md) | 임베딩 모델, DB, 생성 LLM은 언제 호출되는가? | AI 1·DB·AI 2의 역할을 섞지 않는다 |
-| 3 | [벡터 DB와 임베딩](vector-db.md) | 문자열 검색과 의미 검색은 무엇이 다른가? | 벡터·거리·Top-K·ANN을 설명한다 |
-| 4 | [임베딩 계보](embedding-lineage.md) | Word2Vec에서 문맥 임베딩으로 무엇이 달라졌는가? | 정적 임베딩과 문맥 임베딩을 구분한다 |
+| 1 | [RAG 도입 기준](01-basics/rag-vs-modular-reading.md) | 모든 질문에 RAG가 필요한가? | RAG와 파일 직접 읽기의 선택 기준을 말한다 |
+| 2 | [RAG 전체 흐름](01-basics/rag-overall-flow.md) | 임베딩 모델, DB, 생성 LLM은 언제 호출되는가? | AI 1·DB·AI 2의 역할을 섞지 않는다 |
+| 3 | [벡터 DB와 임베딩](01-basics/vector-db.md) | 문자열 검색과 의미 검색은 무엇이 다른가? | 벡터·거리·Top-K·ANN을 설명한다 |
+| 4 | [임베딩 계보](01-basics/embedding-lineage.md) | Word2Vec에서 문맥 임베딩으로 무엇이 달라졌는가? | 정적 임베딩과 문맥 임베딩을 구분한다 |
 
 여기서 가장 중요한 오해는 “벡터 DB가 문장을 이해한다”는 생각이다. 의미를 숫자로 바꾸는 일은 임베딩 모델이 하고, DB는 이미 만들어진 숫자의 거리를 계산한다. 생성 LLM은 검색 결과로 받은 원문 텍스트를 읽는다.
 
@@ -78,7 +90,7 @@ npm run lec:23-24
 2. 벡터 DB 안의 1024개 숫자를 LLM이 직접 읽는가?
 3. 정확한 사번이나 에러 코드는 왜 벡터 검색만으로 놓칠 수 있는가?
 
-막히면 [벡터 DB와 임베딩](vector-db.md) 1장, 5장을 다시 본다.
+막히면 [벡터 DB와 임베딩](01-basics/vector-db.md) 1장, 5장을 다시 본다.
 
 ## 3. 2단계 — 저장과 검색을 손으로 확인하기
 
@@ -94,7 +106,7 @@ npm run lec:23-24
 
 실행 결과의 1등만 보지 말고 `distance`도 본다. 거리가 작을수록 질문 벡터와 가깝다. 관련 없어 보이는 문서가 상위에 나오면 실패가 아니라 중요한 관찰값이다. 이후 하이브리드 검색과 재랭킹을 붙이는 이유가 여기서 생긴다.
 
-SQLite 방식도 비교하고 싶다면 [SQLite 의미 검색](sqlite-vector-search.md)을 읽고 다음을 실행한다.
+SQLite 방식도 비교하고 싶다면 [SQLite 의미 검색](02-pipeline/sqlite-vector-search.md)을 읽고 다음을 실행한다.
 
 ```bash
 npm run lab:sqlite
@@ -106,7 +118,7 @@ Chroma는 ANN과 저장 기능을 감싸 제공한다. SQLite 실습은 모든 �
 
 이제 저장과 검색을 하나의 RAG로 연결한다.
 
-1. [RAG 상세 파이프라인](rag-pipeline.md)의 오프라인/온라인 구분을 읽는다.
+1. [RAG 상세 파이프라인](02-pipeline/rag-pipeline.md)의 오프라인/온라인 구분을 읽는다.
 2. [`documents.ts`](../src/lib/documents.ts)에서 청킹→증분 적재 흐름을 본다.
 3. [`rag.ts`](../src/lib/rag.ts)에서 검색→컨텍스트 조립→생성 흐름을 본다.
 4. `npm run lec:23-24`를 실행한다.
@@ -163,7 +175,7 @@ npm run server
 
 대화 기록도 전부 프롬프트에 넣지 않는다. 저장은 오래 할 수 있지만 생성에는 최근 턴만 넣어 컨텍스트 크기와 오래된 주제의 간섭을 제한한다.
 
-이 단계가 끝나면 [생성형 AI 설계 패턴](generative-ai-patterns.md)의 32개 반영 지도를 읽는다. 패턴 이름을 외우기보다 어떤 실패를 고치기 위해 선택했는지를 본다.
+이 단계가 끝나면 [생성형 AI 설계 패턴](04-patterns/generative-ai-patterns.md)의 32개 반영 지도를 읽는다. 패턴 이름을 외우기보다 어떤 실패를 고치기 위해 선택했는지를 본다.
 
 ## 7. 6단계 — 필요한 확장만 선택하기
 
@@ -171,10 +183,10 @@ npm run server
 
 문서 여러 개에 흩어진 인물·조직·사건 관계를 따라가야 할 때 선택한다.
 
-1. [그래프 DB 입문](graph-db-learning.md) — 노드·관계·Cypher·탐색부터 실습
-2. [GraphRAG 설계](rag-graphdb-hybrid-pipeline.md)
-3. [하이브리드 RAG 워크스루](rag-hybrid-walkthrough.md)
-4. [Graph DB 실행 가이드](pipelines.md#1-graph-db-neo4j-파이프라인-srcgraph-db)
+1. [그래프 DB 입문](03-graphrag/graph-db-learning.md) — 노드·관계·Cypher·탐색부터 실습
+2. [GraphRAG 설계](03-graphrag/rag-graphdb-hybrid-pipeline.md)
+3. [하이브리드 RAG 워크스루](03-graphrag/rag-hybrid-walkthrough.md)
+4. [Graph DB 실행 가이드](05-reference/pipelines.md#1-graph-db-neo4j-파이프라인-srcgraph-db)
 
 워크스루는 입문 문서가 아니다. 벡터 검색과 기본 RAG를 실행한 뒤 데이터가 단계별로 어떤 모양으로 바뀌는지 추적할 때 읽는다.
 
@@ -182,26 +194,26 @@ npm run server
 
 이미지나 스캔 문서를 다룰 때 선택한다.
 
-1. [RAG 상세 파이프라인의 파싱·청킹](rag-pipeline.md#3-오프라인-파이프라인)
-2. [실전 구현과 청킹 전략](rag-practical-implementation.md)
-3. [한글 OCR 실행 가이드](pipelines.md#2-한글-ocr-파이프라인-srcocr)
+1. [RAG 상세 파이프라인의 파싱·청킹](02-pipeline/rag-pipeline.md#3-오프라인-파이프라인)
+2. [실전 구현과 청킹 전략](02-pipeline/rag-practical-implementation.md)
+3. [한글 OCR 실행 가이드](05-reference/pipelines.md#2-한글-ocr-파이프라인-srcocr)
 
 OCR 정확도와 검색 정확도를 따로 측정한다. OCR에서 글자가 잘못 복원되면 뒤의 임베딩과 검색을 아무리 개선해도 원문을 되살릴 수 없다.
 
 ### 참고 도서와 비교
 
-[도서 목차 반영표](book-coverage.md)는 공부 순서가 아니라 범위 확인표다. 처음부터 읽기보다 기본 코스를 마친 뒤 “책의 SQLite VSS나 pgvector 실습과 현재 Chroma 구현이 어디서 갈리는가”를 확인할 때 사용한다.
+[도서 목차 반영표](04-patterns/book-coverage.md)는 공부 순서가 아니라 범위 확인표다. 처음부터 읽기보다 기본 코스를 마친 뒤 “책의 SQLite VSS나 pgvector 실습과 현재 Chroma 구현이 어디서 갈리는가”를 확인할 때 사용한다.
 
 ## 8. 막힐 때 찾아볼 문서
 
 | 문서 | 언제 보는가 |
 |---|---|
-| [LLM 위키](llm-wiki.md) | 토큰·컨텍스트 윈도·온도·환각 용어가 막힐 때 |
-| [현재 프로젝트 아키텍처](rag-architecture.md) | 개념이 `src/`의 어느 파일에 있는지 찾을 때 |
-| [자바 개발자를 위한 노트](자바개발자를-위한-노트.md) | Java/Spring과 TypeScript/Express를 비교할 때 |
-| [강의 실습 목록](lectures.md) | 실행 명령을 빠르게 찾을 때 |
-| [문제 해결](troubleshooting.md) | ChromaDB·Ollama·OCR 실행 오류가 날 때 |
-| [개념 노트 모음](rag-study-notes.md) | 설계 문서만 모아 보고 싶을 때 |
+| [LLM 위키](01-basics/llm-wiki.md) | 토큰·컨텍스트 윈도·온도·환각 용어가 막힐 때 |
+| [현재 프로젝트 아키텍처](02-pipeline/rag-architecture.md) | 개념이 `src/`의 어느 파일에 있는지 찾을 때 |
+| [자바 개발자를 위한 노트](05-reference/자바개발자를-위한-노트.md) | Java/Spring과 TypeScript/Express를 비교할 때 |
+| [강의 실습 목록](05-reference/lectures.md) | 실행 명령을 빠르게 찾을 때 |
+| [문제 해결](05-reference/troubleshooting.md) | ChromaDB·Ollama·OCR 실행 오류가 날 때 |
+| [개념 노트 모음](04-patterns/rag-study-notes.md) | 설계 문서만 모아 보고 싶을 때 |
 
 ## 9. 제대로 이해했는지 확인하는 방법
 

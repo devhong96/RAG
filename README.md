@@ -13,9 +13,9 @@ ChromaDB, Ollama, Neo4j, OCR 기반의 **검색 증강 생성(RAG)** 학습 및 
 빠른 진입점:
 
 * 🗺️ [**전체 학습 순서와 문서 지도**](docs/README.md)
-* 🧭 [**현재 코드 아키텍처**](docs/rag-architecture.md)
-* 🎓 [**강의 실습 순서**](docs/lectures.md)
-* 🔧 [**문제 해결**](docs/troubleshooting.md)
+* 🧭 [**현재 코드 아키텍처**](docs/02-pipeline/rag-architecture.md)
+* 🎓 [**강의 실습 순서**](docs/05-reference/lectures.md)
+* 🔧 [**문제 해결**](docs/05-reference/troubleshooting.md)
 
 ---
 
@@ -52,10 +52,10 @@ npm run lec:07-08
 
 | 구분 | 주요 명령어 | 설명 |
 |:---|:---|:---|
-| **강의 실습** | `npm run lec:07-08` ~ `lec:31-32` | 7강부터 32강까지 순차 실습 ([전체 목록](docs/lectures.md)) |
-| **Graph DB** | `npm run graph:seed`<br>`npm run graph:search` | Neo4j 데이터 적재 및 GraphRAG 질의 ([상세 가이드](docs/pipelines.md)) |
-| **LLM 위키** | `npm run wiki:ingest`<br>`npm run wiki:search` | 위키백과 문서 적재 및 RAG 질의 ([상세 가이드](docs/llm-wiki.md)) |
-| **한글 OCR** | `npm run ocr:parse`<br>`npm run ocr:search` | 문서 이미지 텍스트/표 복원 및 RAG 질의 ([상세 가이드](docs/pipelines.md)) |
+| **강의 실습** | `npm run lec:07-08` ~ `lec:31-32` | 7강부터 32강까지 순차 실습 ([전체 목록](docs/05-reference/lectures.md)) |
+| **Graph DB** | `npm run graph:seed`<br>`npm run graph:search` | Neo4j 데이터 적재 및 GraphRAG 질의 ([상세 가이드](docs/05-reference/pipelines.md)) |
+| **LLM 위키** | `npm run wiki:ingest`<br>`npm run wiki:search` | 위키백과 문서 적재 및 RAG 질의 ([상세 가이드](docs/01-basics/llm-wiki.md)) |
+| **한글 OCR** | `npm run ocr:parse`<br>`npm run ocr:search` | 문서 이미지 텍스트/표 복원 및 RAG 질의 ([상세 가이드](docs/05-reference/pipelines.md)) |
 | **대화형 RAG** | `npm run chat` | 이전 질문을 기억하는 멀티턴 RAG CLI (`/new`, `/exit`) |
 | **질의 라우팅** | `npm run route` | 질문을 벡터/그래프/검색없음 중 어디로 보낼지 결정하는 데모 |
 | **답변 품질 평가** | `npm run eval:answer` | 인용 표기 검사 + 심판형 LLM 채점 (근거성·관련성) |
@@ -100,9 +100,9 @@ docs/                   # 주제별 상세 기술 문서
 |:---|:---|:---|
 | **증분 인덱싱** | 같은 문서를 다시 넣을 때 내용 지문(sha256)을 비교해 **바뀐 청크만 재임베딩**합니다. 서버 인제스트·위키·OCR 파이프라인에 모두 적용했고, `POST /documents` 응답과 스크립트 로그에 `변경/건너뜀/삭제` 수가 찍힙니다. | `src/lib/incremental.ts` |
 | **멀티턴 대화 RAG** | 이전 대화를 참고해 후속 질문("그거 왜 필요한데요?")을 독립 질의로 다시 쓴 뒤 검색합니다. **검색에는 압축한 질의, 생성에는 원래 질문과 대화 기록**을 씁니다. API 기록은 SQLite에 영속화하고 CLI는 가벼운 인메모리 저장소를 씁니다. | `src/lib/conversation.ts`, `src/sqlite/conversation-store.ts`, `npm run chat` |
-| **ANN 인덱스·양자화 문서** | Flat / IVF / HNSW 세 계열과 재현율↔속도 다이얼(`nprobe`, `ef_search`), SQ·BQ·PQ 양자화를 정리했습니다. Chroma 가 무엇을 대신 정해주고 있는지도 함께 적었습니다. | [docs/vector-db.md](docs/vector-db.md) 3-1~3-3절 |
+| **ANN 인덱스·양자화 문서** | Flat / IVF / HNSW 세 계열과 재현율↔속도 다이얼(`nprobe`, `ef_search`), SQ·BQ·PQ 양자화를 정리했습니다. Chroma 가 무엇을 대신 정해주고 있는지도 함께 적었습니다. | [docs/vector-db.md](docs/01-basics/vector-db.md) 3-1~3-3절 |
 
-> 전체 목차의 구현·대체 구현·미구현 경계는 [참고 도서 목차 반영표](docs/book-coverage.md)를 기준으로 관리합니다. SQLite Flat 검색과 임베딩 계보는 보강됐으며, pgvector·FAISS 런타임·arXiv/PDF 데이터 파이프라인은 아직 별도 실습 범위입니다.
+> 전체 목차의 구현·대체 구현·미구현 경계는 [참고 도서 목차 반영표](docs/04-patterns/book-coverage.md)를 기준으로 관리합니다. SQLite Flat 검색과 임베딩 계보는 보강됐으며, pgvector·FAISS 런타임·arXiv/PDF 데이터 파이프라인은 아직 별도 실습 범위입니다.
 
 두 번째 참고 도서(*생성형 AI 설계 패턴*)에서는 **RAG·벡터DB 학습에 바로 이어지는 패턴만** 골라 적용했습니다.
 
@@ -114,4 +114,4 @@ docs/                   # 주제별 상세 기술 문서
 | **경계 가드레일** | 신뢰할 수 없는 입력이 들어오는 문(`POST /ask`)에서 인젝션 표현과 길이를 검사하고, 나가는 답변·발췌에서 이메일·전화번호·주민번호를 가립니다. **정규식 검사는 쉽게 우회된다는 점까지** 코드 주석에 남겼습니다. | `src/lib/guardrails.ts` |
 | **질의 라우팅** | 에이전트의 최소 형태입니다. 도구 선택 한 단계만 모델에게 맡기고 실행은 코드가 합니다(`vector`/`graph`/`none`). 지금까지 "안녕하세요"에도 벡터 검색이 돌던 것을 **검색을 건너뛰는 선택지**로 잡습니다. | `src/lib/router.ts`, `npm run route` |
 
-> 문서로만 정리하고 구현하지 않은 패턴: 어댑터/파인튜닝, 사고 연쇄(CoT/ToT), 스타일 제어. 고른 기준과 넘긴 이유, 판단이 바뀐 과정은 [생성형 AI 설계 패턴, 무엇을 골라 넣었나](docs/generative-ai-patterns.md)에 정리했습니다.
+> 문서로만 정리하고 구현하지 않은 패턴: 어댑터/파인튜닝, 사고 연쇄(CoT/ToT), 스타일 제어. 고른 기준과 넘긴 이유, 판단이 바뀐 과정은 [생성형 AI 설계 패턴, 무엇을 골라 넣었나](docs/04-patterns/generative-ai-patterns.md)에 정리했습니다.

@@ -1,14 +1,14 @@
 # RAG 파이프라인 (오프라인 인덱싱 + 온라인 질의)
 
-> 학습 위치: [전체 문서 지도](README.md) · 이전: [벡터 DB와 임베딩](vector-db.md) · 다음: [현재 프로젝트 아키텍처](rag-architecture.md)
+> 학습 위치: [전체 문서 지도](../README.md) · 이전: [벡터 DB와 임베딩](../01-basics/vector-db.md) · 다음: [현재 프로젝트 아키텍처](../02-pipeline/rag-architecture.md)
 
 > **한 줄 정의:** RAG는 *"질문과 관련된 문서 조각을 검색해서 LLM 프롬프트에 실어 보내, 그 근거 위에서 답을 쓰게 하는"* 구조다. 새로운 건 LLM이 아니라 **stateless한 모델에 무엇을 골라 넣을 것인가**라는 검색 문제다.
 
 > 관련 문서:
 >
-> - [vector-db.md](vector-db.md) — 임베딩, 벡터DB, ANN 인덱스. 이 노트의 검색 단계를 떠받치는 하부 구조
-> - [../database/db-index.md](../../cs-study/database/db-index.md) — B+Tree 인덱스. 벡터 인덱스가 왜 따로 필요한지의 대조군
-> - [../database/index-random-io-and-covering.md](../../cs-study/database/index-random-io-and-covering.md) — 넓게 건지고 좁게 거르는 2단 구조의 원형
+> - [vector-db.md](../01-basics/vector-db.md) — 임베딩, 벡터DB, ANN 인덱스. 이 노트의 검색 단계를 떠받치는 하부 구조
+> - [../database/db-index.md](../../../cs-study/database/db-index.md) — B+Tree 인덱스. 벡터 인덱스가 왜 따로 필요한지의 대조군
+> - [../database/index-random-io-and-covering.md](../../../cs-study/database/index-random-io-and-covering.md) — 넓게 건지고 좁게 거르는 2단 구조의 원형
 
 > **확신도 표기 원칙** — 이 노트는 실습 없이 정리한 1차 학습 노트다. 구조와 원리는 확실, 수치는 어림, 개별 오픈소스 프로젝트의 구현 상태는 **미검증**으로 명시한다.
 
@@ -150,7 +150,7 @@
 | :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **누가 만드는가?**   | 개발자가 필드와 규칙을 설계하고, 실행할 때 API 호출자·문서 수집기·파서·청킹 코드가 값을 제공한다. 최종 메타데이터 객체는 적재 코드가 청크별로 조립한다. |
 | **언제 만드는가?**   | 문서를 입력받을 때부터 값을 모으고, 파싱·청킹을 마친 뒤 벡터DB에 적재하기 직전에 청크별 최종 형태를 완성한다.                                             |
-| **어디서 만드는가?** | 문서 인제스트(적재) 파이프라인에서 만든다. 현재 프로젝트에서는[`ingestDocument()`](../src/lib/documents.ts)가 공통 값과 시스템 값을 병합한다.             |
+| **어디서 만드는가?** | 문서 인제스트(적재) 파이프라인에서 만든다. 현재 프로젝트에서는[`ingestDocument()`](../../src/lib/documents.ts)가 공통 값과 시스템 값을 병합한다.             |
 | **무엇을 넣는가?**   | 출처·제목·페이지·섹션, 분류·연도, 접근 권한, 문서 ID·버전, 청크 순번·부모 ID처럼 나중에 필터링·표시·관리할 값을 넣는다.                            |
 | **어떻게 만드는가?** | 문서 공통 값은 모든 청크에 상속하고, 파서·청커가 만든 위치별 값과 적재 코드가 만든 시스템 값을 합쳐`documents`와 함께 `metadatas`로 저장한다.         |
 | **왜 만드는가?**     | 검색 범위 필터링, 출처 표시, 접근 권한 검사, 문서 갱신·삭제, 청크와 원문의 연결을 가능하게 하기 위해서다.                                                 |
@@ -296,7 +296,7 @@ LLM·분류 모델이 의미 기반 필드 추출
 }
 ```
 
-[`src/lib/documents.ts`](../src/lib/documents.ts)의 `ingestDocument()`는 문서를 청킹한 뒤, 입력받은 공통 메타데이터에 시스템 필드를 합쳐 청크별 메타데이터를 만든다.
+[`src/lib/documents.ts`](../../src/lib/documents.ts)의 `ingestDocument()`는 문서를 청킹한 뒤, 입력받은 공통 메타데이터에 시스템 필드를 합쳐 청크별 메타데이터를 만든다.
 
 ```ts
 const metadatas = chunks.map((_, i) => ({
@@ -328,7 +328,7 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 
 ### 3-6. 임베딩과 저장
 
-**임베딩은 조각 하나당 연산 한 번이다.** 조각 100만 개면 임베딩 100만 개를 만들어야 한다. 다만 **API 요청 수와 임베딩 개수는 다르다** — 임베딩 API는 대개 배치 입력(한 요청에 여러 텍스트)을 받으므로 요청 수는 훨씬 줄일 수 있다. **줄어드는 건 요청 수와 왕복 지연이지 토큰 과금이 아니다.** 로컬 오픈소스 모델을 쓰면 API 비용은 0이지만 GPU나 시간을 쓴다. 자세한 원리는 [vector-db.md](vector-db.md) 참고.
+**임베딩은 조각 하나당 연산 한 번이다.** 조각 100만 개면 임베딩 100만 개를 만들어야 한다. 다만 **API 요청 수와 임베딩 개수는 다르다** — 임베딩 API는 대개 배치 입력(한 요청에 여러 텍스트)을 받으므로 요청 수는 훨씬 줄일 수 있다. **줄어드는 건 요청 수와 왕복 지연이지 토큰 과금이 아니다.** 로컬 오픈소스 모델을 쓰면 API 비용은 0이지만 GPU나 시간을 쓴다. 자세한 원리는 [vector-db.md](../01-basics/vector-db.md) 참고.
 
 **모델은 한 번 고르면 갈아타기가 비싸다.** 모델을 바꾸면 벡터 공간 자체가 달라져 **기존 벡터가 전부 무의미해진다.** 전체 재색인 말고 방법이 없다.
 
@@ -362,7 +362,7 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 
 **두 순위를 합치는 방법.** 점수 체계가 서로 달라 그냥 못 더한다. **RRF(Reciprocal Rank Fusion)** 는 각 결과에서의 등수의 역수를 더하는 방식이라 점수 스케일을 맞출 필요가 없다.
 
-**필터도 이 단계에 걸린다.** 권한과 버전 필터가 여기 붙고, 구현이 까다롭다. 상세는 [vector-db.md](vector-db.md) 참고.
+**필터도 이 단계에 걸린다.** 권한과 버전 필터가 여기 붙고, 구현이 까다롭다. 상세는 [vector-db.md](../01-basics/vector-db.md) 참고.
 
 ### 4-3. 리랭킹 — 넓게 건지고 좁게 거른다
 
@@ -454,7 +454,7 @@ RAG를 기법 목록으로 외우면 안 남는다. **각 단계가 무너질 �
 | 강점 방향 | 표와 레이아웃이 복잡한 실무 문서  | 문서 전체를 가로지르는 전역 질문 | 그래프 이점 + 증분 갱신  |
 | 대가      | 무겁다, 여러 컴포넌트를 띄워야 함 | 색인 토큰 비용이 크다            | 그래프 품질은 미확인     |
 
-⚠️ **오해 주의 — 그래프 계열이 벡터를 안 쓰는 게 아니다.** 위 표의 "무거운 그래프", "가벼운 그래프"를 벡터를 안 쓴다는 뜻으로 읽으면 안 된다. **LightRAG는 논문 초록에서 벡터를 쓴다고 명시한다**(확실). LightRAG 초록은 *"The integration of graph structures with vector representations facilitates efficient retrieval of related entities and their relationships"*라고 적혀 있다 [출처: [arXiv:2410.05779](https://arxiv.org/abs/2410.05779), 초록 원문 확인 ✅]. 즉 **벡터가 진입점이고 그래프가 확장 경로다**. 이 구조 자체는 [rag-hybrid-walkthrough.md](rag-hybrid-walkthrough.md) 3장에서 예제로 끝까지 추적해뒀다. **GraphRAG도 마찬가지다** — 공식 문서가 로컬 검색을 *"the local search method identifies a set of entities from the knowledge graph that are **semantically-related** to the user input"*이라고 설명하고, 입력에 **Entity Description Embedding**이 들어간다 [출처: [GraphRAG 공식 문서 Local Search](https://microsoft.github.io/graphrag/query/local_search/), 원문 확인 ✅]. 즉 **임베딩으로 진입 엔티티를 찾고 거기서 관계·커뮤니티 리포트·원문 청크로 확장한다.** (RAGFlow가 벡터를 어디에 쓰는지는 레포로 확인 안 했다 🔍.)
+⚠️ **오해 주의 — 그래프 계열이 벡터를 안 쓰는 게 아니다.** 위 표의 "무거운 그래프", "가벼운 그래프"를 벡터를 안 쓴다는 뜻으로 읽으면 안 된다. **LightRAG는 논문 초록에서 벡터를 쓴다고 명시한다**(확실). LightRAG 초록은 *"The integration of graph structures with vector representations facilitates efficient retrieval of related entities and their relationships"*라고 적혀 있다 [출처: [arXiv:2410.05779](https://arxiv.org/abs/2410.05779), 초록 원문 확인 ✅]. 즉 **벡터가 진입점이고 그래프가 확장 경로다**. 이 구조 자체는 [rag-hybrid-walkthrough.md](../03-graphrag/rag-hybrid-walkthrough.md) 3장에서 예제로 끝까지 추적해뒀다. **GraphRAG도 마찬가지다** — 공식 문서가 로컬 검색을 *"the local search method identifies a set of entities from the knowledge graph that are **semantically-related** to the user input"*이라고 설명하고, 입력에 **Entity Description Embedding**이 들어간다 [출처: [GraphRAG 공식 문서 Local Search](https://microsoft.github.io/graphrag/query/local_search/), 원문 확인 ✅]. 즉 **임베딩으로 진입 엔티티를 찾고 거기서 관계·커뮤니티 리포트·원문 청크로 확장한다.** (RAGFlow가 벡터를 어디에 쓰는지는 레포로 확인 안 했다 🔍.)
 
 **임베딩 대상이 다르다는 게 진짜 차이다.**
 

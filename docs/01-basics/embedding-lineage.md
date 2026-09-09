@@ -1,8 +1,8 @@
 # 임베딩 계보 — Word2Vec에서 현대 임베딩 모델까지
 
-> 학습 위치: [전체 문서 지도](README.md) · 이전: [벡터DB](vector-db.md) · 실습 코드: [`vector-math.ts`](../src/lib/vector-math.ts)
+> 학습 위치: [전체 문서 지도](../README.md) · 이전: [벡터DB](../01-basics/vector-db.md) · 실습 코드: [`vector-math.ts`](../../src/lib/vector-math.ts)
 
-이 문서는 [벡터 DB와 임베딩](vector-db.md) 1장을 읽은 뒤 보는 것이 좋다. 처음에는 모델 이름을 외우기보다 **표현 단위가 단어에서 문장으로, 고정 벡터에서 문맥 벡터로 어떻게 바뀌었는지**를 따라간다.
+이 문서는 [벡터 DB와 임베딩](../01-basics/vector-db.md) 1장을 읽은 뒤 보는 것이 좋다. 처음에는 모델 이름을 외우기보다 **표현 단위가 단어에서 문장으로, 고정 벡터에서 문맥 벡터로 어떻게 바뀌었는지**를 따라간다.
 
 ## 1. 왜 임베딩이 필요한가
 
@@ -41,7 +41,7 @@ Doc2Vec은 Word2Vec 학습에 문단이나 문서 ID를 나타내는 벡터를 �
 
 ## 6. 벡터 연산 실습
 
-[`src/lib/vector-math.ts`](../src/lib/vector-math.ts)는 다음을 외부 DB 없이 실행한다.
+[`src/lib/vector-math.ts`](../../src/lib/vector-math.ts)는 다음을 외부 DB 없이 실행한다.
 
 - 내적: 두 방향의 정렬 정도
 - 코사인 유사도/거리: 크기를 무시한 방향 비교
@@ -66,7 +66,7 @@ Doc2Vec은 Word2Vec 학습에 문단이나 문서 ID를 나타내는 벡터를 �
 1. `cosineSimilarity`에서 내적을 두 벡터 크기로 나누는 부분을 본다.
 2. `cosineDistance`가 왜 `1 - similarity`인지 확인한다.
 3. `topKByCosine`이 모든 후보를 계산하고 정렬하므로 왜 O(N)인지 생각한다.
-4. [`core.test.ts`](../src/lib/core.test.ts)의 `벡터 연산과 집계` 테스트를 숫자 하나씩 바꿔 실행한다.
+4. [`core.test.ts`](../../src/lib/core.test.ts)의 `벡터 연산과 집계` 테스트를 숫자 하나씩 바꿔 실행한다.
 
 ## 7. 이 저장소의 선택
 
