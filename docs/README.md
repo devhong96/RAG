@@ -15,7 +15,7 @@
 | 디렉터리 | 무엇을 담았나 | 문서 |
 |---|---|---|
 | [`01-basics/`](01-basics/) | RAG·벡터·임베딩의 기본 개념 | [RAG 도입 기준](01-basics/rag-vs-modular-reading.md) · [RAG 전체 흐름](01-basics/rag-overall-flow.md) · [벡터 DB와 임베딩](01-basics/vector-db.md) · [임베딩 계보](01-basics/embedding-lineage.md) · [LLM 위키](01-basics/llm-wiki.md) |
-| [`02-pipeline/`](02-pipeline/) | 파이프라인 설계와 이 저장소의 구현 | [RAG 상세 파이프라인](02-pipeline/rag-pipeline.md) · [실전 구현과 청킹 전략](02-pipeline/rag-practical-implementation.md) · [SQLite 의미 검색](02-pipeline/sqlite-vector-search.md) · [현재 코드 아키텍처](02-pipeline/rag-architecture.md) |
+| [`02-pipeline/`](02-pipeline/) | 파이프라인 설계와 이 저장소의 구현 | [RAG 상세 파이프라인](02-pipeline/rag-pipeline.md) · [실전 구현과 청킹 전략](02-pipeline/rag-practical-implementation.md) · [SQLite 의미 검색](02-pipeline/sqlite-vector-search.md) · [현재 코드 아키텍처](02-pipeline/rag-architecture.md) · [핵심 코드 읽기(자바 개발자용)](02-pipeline/core-code-walkthrough.md) · [검색 개선 코드 읽기(자바 개발자용)](02-pipeline/search-code-walkthrough.md) |
 | [`03-graphrag/`](03-graphrag/) | 그래프 DB와 GraphRAG 확장 | [그래프 DB 입문](03-graphrag/graph-db-learning.md) · [GraphRAG 설계](03-graphrag/rag-graphdb-hybrid-pipeline.md) · [하이브리드 RAG 워크스루](03-graphrag/rag-hybrid-walkthrough.md) |
 | [`04-patterns/`](04-patterns/) | 설계 패턴과 범위 정리 | [생성형 AI 설계 패턴](04-patterns/generative-ai-patterns.md) · [도서 목차 반영표](04-patterns/book-coverage.md) · [개념 노트 모음](04-patterns/rag-study-notes.md) |
 | [`05-reference/`](05-reference/) | 실행할 때 찾아보는 참고 자료 | [강의 실습 목록](05-reference/lectures.md) · [파이프라인 실행 가이드](05-reference/pipelines.md) · [문제 해결](05-reference/troubleshooting.md) · [자바 개발자를 위한 노트](05-reference/자바개발자를-위한-노트.md) |
@@ -121,6 +121,7 @@ Chroma는 ANN과 저장 기능을 감싸 제공한다. SQLite 실습은 모든 �
 1. [RAG 상세 파이프라인](02-pipeline/rag-pipeline.md)의 오프라인/온라인 구분을 읽는다.
 2. [`documents.ts`](../src/lib/documents.ts)에서 청킹→증분 적재 흐름을 본다.
 3. [`rag.ts`](../src/lib/rag.ts)에서 검색→컨텍스트 조립→생성 흐름을 본다.
+   코드 문법이 막히면 [핵심 코드 읽기(자바 개발자용)](02-pipeline/core-code-walkthrough.md)을 옆에 두고 줄 단위로 대조한다.
 4. `npm run lec:23-24`를 실행한다.
 
 두 파이프라인을 반드시 분리해서 이해한다.
@@ -151,6 +152,8 @@ npm run lec:15
 | 1차 검색 순서가 거칠음 | 크로스 인코더 재랭킹 | [`rerank.ts`](../src/lib/search/rerank.ts) | `npm run lec:29-30` |
 | 질문 표현에 따라 결과가 흔들림 | 재작성·Multi-Query·HyDE | [`rewrite.ts`](../src/lib/search/rewrite.ts) | `npm run lec:31-32` |
 | 질문에 정형 조건이 섞임 | Self-Query 필터 | [`self-query.ts`](../src/lib/search/self-query.ts) | `npm run lec:31-32` |
+
+이 단계의 코드 문법(타입 가드, 구조분해, `class`)은 [검색 개선 코드 읽기(자바 개발자용)](02-pipeline/search-code-walkthrough.md)에서 줄 단위로 대조한다.
 
 주의할 점은 현재 하이브리드 예제의 키워드 검색이 BM25가 아니라 `$contains` 문자열 포함 검사라는 것이다. 학습 목표는 “서로 다른 검색 신호를 합친다”는 구조를 보는 데 있다.
 

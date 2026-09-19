@@ -59,6 +59,24 @@
 
 **백엔드 감각으로 옮기면** 위쪽은 ETL 배치 잡이고 아래쪽은 조회 API다. 그리고 둘의 관계는 **캐시와 원본의 관계**와 같다. 원본이 바뀌었는데 파생 데이터가 안 바뀌면 오래된 답이 나간다. **RAG의 최신성 문제는 새로운 문제가 아니라 캐시 무효화 문제다.**
 
+**이 저장소에서 각 단계가 어디에 있는가.** 아래는 지도이고, 각 절 끝의 `📍 코드` 박스에서 함수 단위로 다시 짚는다. 경로는 모두 [`src/`](../../src) 기준이다.
+
+| 단계 | 파일 | 진입 함수 | 실행해 보기 |
+| --- | --- | --- | --- |
+| 파싱 | [`ocr/engine.ts`](../../src/ocr/engine.ts), [`ocr/pipeline.ts`](../../src/ocr/pipeline.ts), [`lib/chunking/structural.ts`](../../src/lib/chunking/structural.ts) | `OCREngine.recognize()`, `structureOCRWithLLM()`, `splitByHeaders()` | `npm run ocr:parse` |
+| 청킹 | [`lib/chunking/fixed.ts`](../../src/lib/chunking/fixed.ts), [`semantic.ts`](../../src/lib/chunking/semantic.ts) | `chunkText()`, `slidingChunk()`, `semanticChunks()` | `npm run lec:15` |
+| 임베딩 | [`lib/ollama-embedding.ts`](../../src/lib/ollama-embedding.ts), [`lib/chroma.ts`](../../src/lib/chroma.ts) | `OllamaEmbeddingFunction.generate()` | `npm run lec:10` |
+| 저장·갱신 | [`lib/documents.ts`](../../src/lib/documents.ts), [`lib/incremental.ts`](../../src/lib/incremental.ts) | `ingestDocument()`, `incrementalUpsert()` | `npm run lec:11-12` |
+| 질의 변환 | [`lib/search/rewrite.ts`](../../src/lib/search/rewrite.ts), [`lib/conversation.ts`](../../src/lib/conversation.ts) | `rewriteQuery()`, `hydeSearch()`, `multiQuerySearch()`, `condenseQuestion()` | — |
+| 검색 | [`lib/documents.ts`](../../src/lib/documents.ts), [`lib/search/hybrid.ts`](../../src/lib/search/hybrid.ts), [`lib/search/self-query.ts`](../../src/lib/search/self-query.ts) | `searchDocuments()`, `hybridSearch()`, `rrfMerge()`, `selfQuerySearch()` | `npm run lec:19`, `lec:31-32` |
+| 리랭킹 | [`lib/search/rerank.ts`](../../src/lib/search/rerank.ts) | `rerankScores()`, `searchWithRerank()` | `npm run lec:29-30` |
+| 프롬프트 조립 | [`lib/rag.ts`](../../src/lib/rag.ts) | `buildContext()`, `buildMessages()` | `npm run lec:23-24` |
+| LLM 호출 | [`lib/llm.ts`](../../src/lib/llm.ts) | `chatComplete()` | — |
+| 후처리 | [`lib/citations.ts`](../../src/lib/citations.ts), [`lib/guardrails.ts`](../../src/lib/guardrails.ts), [`lib/rag.ts`](../../src/lib/rag.ts) | `checkCitations()`, `maskPii()`, `answerQuestionReliably()` | — |
+| 전체 묶음 (HTTP) | [`server/routes/documents.ts`](../../src/server/routes/documents.ts), [`server/routes/ask.ts`](../../src/server/routes/ask.ts) | `POST /documents` → 오프라인, `POST /ask` → 온라인 | `npm run server` |
+
+문법 위주로 코드를 한 줄씩 푼 문서는 [core-code-walkthrough.md](core-code-walkthrough.md)(오프라인 + 기본 RAG)와 [search-code-walkthrough.md](search-code-walkthrough.md)(검색 고급 기법)에 있다.
+
 이름의 유래도 여기서 나온다.
 
 - **R (Retrieval)** — 검색해서 조각을 찾는 단계
@@ -83,6 +101,11 @@
 - **스캔 PDF**는 이미지라 OCR을 태워야 하고 오탈자가 섞인다
 
 스키마 없는 레거시에서 데이터를 긁어오는 ETL 추출 단계와 같다. **여기서 깨진 데이터는 하류에서 복구되지 않는다.**
+
+> 📍 **코드** — 이 저장소에는 PDF 파서가 없다. 파싱에 해당하는 코드는 두 갈래다.
+>
+> - **스캔 이미지 → 텍스트**: [`ocr/engine.ts`](../../src/ocr/engine.ts) `OCREngine.recognize()`가 sharp 전처리 후 Tesseract로 글자를 뽑고, [`ocr/pipeline.ts`](../../src/ocr/pipeline.ts) `structureOCRWithLLM()`이 깨진 원시 텍스트를 LLM으로 마크다운·표 구조로 복원한다. 위에서 말한 "표가 무너진다", "OCR 오탈자"가 실제로 어떻게 보이는지 `npm run ocr:parse`로 확인할 수 있다
+> - **마크다운·HTML → 제목 계층**: [`lib/chunking/structural.ts`](../../src/lib/chunking/structural.ts) `splitByHeaders()` / `splitHtmlByHeaders()`가 제목 태그를 기준으로 `HeadingBlock[]`을 만든다. 3-2의 "구조 기준" 청킹이 여기서 나온 구조 정보를 쓴다. 위키 문서를 가져오는 [`wiki/fetch.ts`](../../src/wiki/fetch.ts)가 실제 입력 예시다
 
 ### 3-2. 청킹 (Chunking)
 
@@ -111,6 +134,15 @@
 - **구조 기준** — 파싱에서 얻은 제목 계층으로 섹션 단위로 자른다. **파싱이 잘 됐을 때만 가능하다**
 - **의미 기준(semantic)** — 인접 문장 임베딩을 비교해 의미가 바뀌는 지점에서 자른다. 색인 비용이 오르고 **효과는 문서 성격에 따라 들쭉날쭉하다.** 항상 낫다는 보장은 없다 (추측 섞임)
 
+> 📍 **코드** — 전략 네 개 중 셋이 [`lib/chunking/`](../../src/lib/chunking)에 있다.
+>
+> - **고정 크기**: [`fixed.ts`](../../src/lib/chunking/fixed.ts) `fixedChunks()` — N자마다 자른다. 문장 중간에서 잘리는 걸 보여주는 대조군
+> - **구분자 기준**: [`fixed.ts`](../../src/lib/chunking/fixed.ts) `chunkText()` — 문장 단위로 모으다가 크기 상한을 넘으면 끊는다. **실제 인제스트가 쓰는 기본값**이다 ([`documents.ts`](../../src/lib/documents.ts) `ingestDocument()` 안에서 `chunkText(input.text, 120)`)
+> - **구조 기준**: [`structural.ts`](../../src/lib/chunking/structural.ts) `splitByHeaders()` — 3-1에서 뽑은 제목 계층으로 자른다
+> - **의미 기준**: [`semantic.ts`](../../src/lib/chunking/semantic.ts) `semanticChunks()` — 인접 문장 임베딩의 코사인 유사도가 떨어지는 지점에서 자른다. 청킹 단계에서 이미 임베딩 호출이 들어가므로 색인 비용이 오르는 걸 코드로 볼 수 있다
+>
+> 셋을 나란히 돌려보는 강의 스크립트는 [`lectures/15-chunking.ts`](../../src/lectures/15-chunking.ts) (`npm run lec:15`).
+
 ### 3-3. 오버랩 — 완화이지 해결이 아니다
 
 조각 경계에 답이 걸리는 문제의 가장 단순한 대응은 **겹치게 자르는 것**이다.
@@ -131,6 +163,8 @@
 
 **한계.** 잘린 논리가 오버랩 폭보다 길면 여전히 깨진다. 오버랩을 키워서 문맥 문제를 다 막으려는 시도는 실패한다. 비용만 폭발하고 중복 오염이 심해진다.
 
+> 📍 **코드** — [`lib/chunking/fixed.ts`](../../src/lib/chunking/fixed.ts) `slidingChunk(text, size, overlap)`. 위 그림의 `0~1000`, `800~1800`이 그대로 `size=1000, overlap=200`이다. 기본 인제스트 경로(`chunkText`)는 오버랩을 쓰지 않으므로, 오버랩을 쓰려면 `ingestDocument()`에서 청커를 바꿔 끼워야 한다.
+
 ### 3-4. 검색 단위와 투입 단위를 분리한다 (★)
 
 **"검색해서 걸린 조각을 그대로 LLM에 넣는다"는 전제를 깨면** 위 딜레마의 출구가 생긴다. 이게 이 주제에서 가장 중요한 발상 전환이다.
@@ -139,6 +173,11 @@
 - **조각에 맥락을 미리 심어둔다.** 색인 시점에 각 조각 앞에 "이 문서는 2026년 개정 인사규정이고 이 조각은 연차 항목에 속한다" 같은 요약을 붙여 저장한다. 조각 혼자서도 말이 되고 검색에도 그 맥락이 반영된다. Anthropic이 contextual retrieval이라는 이름으로 정리해 공개했다 (**방식은 거의 확실, 제시된 개선 수치와 정확한 URL은 미확인**)
 
 **대가.** 앞의 것은 저장 구조가 복잡해지고(조각과 부모의 관계 관리), 뒤의 것은 **색인 때 조각마다 LLM을 한 번씩 태워야 해서** 초기 비용이 크게 오른다.
+
+> 📍 **코드**
+>
+> - **작게 검색하고 크게 넣는다**: [`lib/search/parent-child.ts`](../../src/lib/search/parent-child.ts) `parentChildSearch(childCollection, parentCollection, ...)` — 자식 컬렉션에서 검색해 걸린 자식의 `parentId` 메타데이터로 부모 컬렉션에서 큰 덩어리를 꺼낸다. "조각과 부모의 관계 관리"가 곧 이 두 컬렉션과 `parentId` 필드다. 부모가 너무 크면 `trimContext()`가 한도 안에서 앞부터 자른다. 자식·부모 컬렉션을 만드는 적재 쪽은 [`lectures/27-parent-child.ts`](../../src/lectures/27-parent-child.ts) (`npm run lec:27`)
+> - **조각에 맥락을 미리 심어둔다 (contextual retrieval)**: **미구현.** 가장 가까운 것은 [`wiki/pipeline.ts`](../../src/wiki/pipeline.ts)에서 제목을 청크 본문 앞에 붙이는 처리 정도이고, 조각마다 LLM으로 요약을 만들어 붙이는 단계는 없다
 
 ### 3-5. 메타데이터 — 여기서 안 심으면 나중에 못 만든다 (★)
 
@@ -340,6 +379,14 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 
 **이게 캐시 무효화 문제다.** 원본은 파일 스토리지나 RDB에 있고 벡터DB는 그로부터 파생된 인덱스다. **원본 변경 이벤트를 벡터DB까지 전파하는 파이프라인이 없으면 최신성 실패는 반드시 터진다.** 도구가 대신 안 해준다.
 
+> 📍 **코드**
+>
+> - **임베딩**: [`lib/ollama-embedding.ts`](../../src/lib/ollama-embedding.ts) `OllamaEmbeddingFunction.generate(texts)` — Ollama의 임베딩 API를 부른다. 우리 코드에는 이걸 직접 호출하는 줄이 없다. [`lib/chroma.ts`](../../src/lib/chroma.ts)에서 `embedder`를 만들어 컬렉션에 등록해 두면 `upsert`와 `query` 때 Chroma가 대신 부른다 (호출 시점은 `npm run lec:10`). "모델은 한 번 고르면 갈아타기가 비싸다"의 모델 이름은 [`config.ts`](../../src/config.ts) `config.ollama.model` 한 곳에 있다
+> - **요청 수 줄이기 (배치)**: [`lib/batch.ts`](../../src/lib/batch.ts) `processInBatches()` — 대량 적재 때 청크를 `DEFAULT_BATCH_SIZE`(64)개씩 묶어 `upsert`한다. `incrementalUpsert()`가 내부에서 쓰므로 `ingestDocument()` 경로는 항상 배치로 나간다
+> - **추가·수정·삭제**: [`lib/documents.ts`](../../src/lib/documents.ts) `ingestDocument()` — id를 `source+순번`으로 고정해 같은 문서를 다시 넣으면 upsert가 되게 하고, 새 목록에 없는 예전 id만 골라 지운다 (문서가 짧아졌을 때 남는 꼬리 조각 처리). 함수 위 주석에 "기존 조각을 먼저 다 지우지 않는" 이유가 적혀 있다
+> - **바뀐 조각만 다시 임베딩**: [`lib/incremental.ts`](../../src/lib/incremental.ts) `contentHash()` → `planIncrementalUpsert()` → `incrementalUpsert()` — 청크 본문+메타데이터의 해시를 메타데이터(`contentHash`)에 같이 저장해 두고, 다음 인제스트 때 해시가 같은 청크는 건너뛴다. 이것이 캐시 무효화 문제에 대한 이 저장소의 답이다
+> - **원본 변경 이벤트 전파**: **미구현.** 파일 감시나 웹훅은 없고, 호출자가 `POST /documents`([`server/routes/documents.ts`](../../src/server/routes/documents.ts))를 다시 부르는 것으로 대신한다
+
 ---
 
 ## 4. 온라인 파이프라인
@@ -350,6 +397,15 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 - **확장** — 원 질문에서 변형 질의를 여러 개 만들어 각각 검색한 뒤 합친다. 재현율이 오르고 지연과 비용이 배로 든다
 
 **온라인 단계에서는 무엇을 추가하든 사용자가 기다리는 지연으로 되돌아온다.**
+
+> 📍 **코드**
+>
+> - **재작성 (대화 맥락 붙이기)**: [`lib/conversation.ts`](../../src/lib/conversation.ts) `condenseQuestion(history, question)` — "그럼 반차는요?"를 이전 턴을 보고 독립 질문으로 편다. [`lib/rag.ts`](../../src/lib/rag.ts) `answerInConversation()`이 검색 직전에 부르고, 결과를 `searchQuery`로 응답에 실어 무엇으로 검색했는지 볼 수 있게 한다. 이력은 `trimHistory()`가 `MAX_TURNS`(5턴)로 자른다 — stateless 모델에 매번 이전 대화를 다시 싣는 비용을 여기서 제한한다
+> - **재작성 (검색용 다듬기)**: [`lib/search/rewrite.ts`](../../src/lib/search/rewrite.ts) `rewriteQuery()` — 구어체 질문을 검색어로 고쳐 쓴다
+> - **HyDE**: 같은 파일 `hydeSearch()` — 질문 대신 LLM이 지어낸 가상의 답변을 임베딩해 검색한다
+> - **확장 (multi-query)**: 같은 파일 `expandQueries(original, n)` → `multiQuerySearch()` — 변형 질의 n개로 각각 검색해 합친다. LLM 호출 1회 + 검색 n회가 추가되는 것이 코드에 그대로 보인다
+>
+> 이 넷은 모두 **선택**이며, 기본 경로인 `answerQuestion()`은 어느 것도 거치지 않고 원문 그대로 검색한다.
 
 ### 4-2. 검색 — 하이브리드가 사실상 기본
 
@@ -364,6 +420,13 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 
 **필터도 이 단계에 걸린다.** 권한과 버전 필터가 여기 붙고, 구현이 까다롭다. 상세는 [vector-db.md](../01-basics/vector-db.md) 참고.
 
+> 📍 **코드**
+>
+> - **벡터 검색**: [`lib/documents.ts`](../../src/lib/documents.ts) `searchDocuments(collection, query, nResults, where?)` — `collection.query({ queryTexts })`를 감싸 `{ id, document, distance, metadata }` 배열로 편다. 기본 RAG 경로는 이것만 쓴다
+> - **키워드 검색 + 합치기**: [`lib/search/hybrid.ts`](../../src/lib/search/hybrid.ts) `hybridSearch()` — 벡터로 `nResults*2`개를 넉넉히 뽑고, `whereDocument: { $contains }`로 글자 일치 조각을 찾아 가산점을 준다. **RRF**는 같은 파일 `rrfMerge(rankings, k=60)` — 등수의 역수를 더한다. `npm run lec:19`
+> - **필터 (권한·버전·연도)**: `searchDocuments()`의 `where` 인자가 Chroma 메타데이터 필터로 그대로 넘어간다. 3-5에서 심은 메타데이터가 여기서 소비된다. 필터를 자연어 질문에서 LLM이 뽑아내는 self-query는 [`lib/search/self-query.ts`](../../src/lib/search/self-query.ts) `extractFilter()` → `normalizeWhere()` → `selfQuerySearch()`. `npm run lec:31-32`
+> - **BM25 자체는 없다.** `$contains`는 단순 부분 문자열 일치이지 BM25 점수가 아니다. 벡터DB 없이 SQLite로 같은 검색을 구현한 것은 [`sqlite/vector-store.ts`](../../src/sqlite/vector-store.ts) `SqliteVectorStore` ([sqlite-vector-search.md](sqlite-vector-search.md))
+
 ### 4-3. 리랭킹 — 넓게 건지고 좁게 거른다
 
 후보 수십 개를 다시 줄 세워 상위 몇 개만 남긴다.
@@ -373,6 +436,8 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 **그래서 2단 구조다.** 빠른 방법으로 100만 개에서 수십 개로 좁히고, 느린 방법으로 그걸 정렬한다. **DB 인덱스로 후보를 좁힌 뒤 애플리케이션에서 정밀 조건을 거는 것**과 같은 구조다.
 
 **대가.** 후보 50개면 리랭커 추론 50회다. 후보 수가 정확도와 지연의 다이얼이 된다.
+
+> 📍 **코드** — [`lib/search/rerank.ts`](../../src/lib/search/rerank.ts). `rerankScores(query, docs)`가 질문-조각 **쌍**을 크로스 인코더(`@xenova/transformers`, 모델은 `config.reranker.modelId`)에 넣어 점수를 낸다. `searchWithRerank()`가 2단 구조 그 자체다 — 벡터로 후보를 넓게 뽑은 뒤 `rerankScores`로 정렬해 상위만 남긴다. 반환 점수는 0~1이 아니라 logit이라 절댓값이 아니라 순서만 의미 있다는 설명이 파일 주석에 있다. `npm run lec:29-30`
 
 ### 4-4. 프롬프트 조립
 
@@ -392,6 +457,13 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 - **순서를 어떻게 두나** — 중간이 흐려지므로 **중요한 조각을 맨 앞이나 맨 뒤에** 배치한다
 - **메타데이터를 같이 넣나** — 문서명과 날짜를 넣어야 모델이 "2026년 개정본 기준"이라고 답할 수 있고 출처도 붙는다
 
+> 📍 **코드** — [`lib/rag.ts`](../../src/lib/rag.ts)의 비공개 함수 둘.
+>
+> - `buildContext(sources)` — 검색 결과를 `[자료 1 - 출처: ..., 관련도: 0.87]\n본문` 형태로 이어 붙인다. 위 예시의 `[문서 1] (인사규정 2026 개정, 제23조, 18쪽)` 자리이고, 메타데이터 중 `source`만 넣고 있다 — 문서명·버전·페이지를 같이 넣으려면 여기를 고친다
+> - `buildMessages(question, context, history)` — system 메시지에 역할·근거 규칙·형식 규칙(문장마다 `[자료 n]` 표기)을 넣고, 이전 대화(`history`)와 이번 질문을 그 뒤에 둔다. "대화 기록은 맥락, 자료는 근거라서 섞지 않는다"는 주석이 순서를 정한 이유다
+> - **top-k**: `answerQuestion(question, nResults = 3)`의 `nResults`가 그 다이얼이다. HTTP에서는 `POST /ask`의 `nResults`(1~50)로 넘어온다
+> - **순서 재배치**(중요한 것을 앞·뒤에)와 **컨텍스트 압축**은 **미구현.** 길이 초과 방어는 [`parent-child.ts`](../../src/lib/search/parent-child.ts) `trimContext()`처럼 앞에서부터 자르는 것뿐이다
+
 ### 4-5. 생성과 후처리
 
 **환각은 여기서 터진다.** 문서에는 "이월하지 않는다"고 적혀 있는데 모델이 일반 상식으로 "일부 이월 가능하다"고 답하거나, 출처 `[1]`은 붙었는데 그 문서에 그런 내용이 없는 경우다.
@@ -403,6 +475,16 @@ await collection.upsert({ ids, documents: chunks, metadatas })
 - **인용 검증** — 답변이 인용한 근거가 실제로 그 내용을 담고 있는지 프로그램이나 별도 LLM 호출로 대조한다
 - **출처 표시** — 사용자가 원문을 확인할 수 있게 링크를 붙인다. **환각을 없애지는 못해도 사용자가 잡아낼 수 있게 만드는 게 현실적인 방어선이다**
 - **거절 처리** — 검색 점수가 임계값 아래면 아예 답하지 않는다
+
+> 📍 **코드**
+>
+> - **생성**: [`lib/llm.ts`](../../src/lib/llm.ts) `chatComplete(messages)` — Ollama 채팅 API 호출. 이 저장소에서 LLM을 부르는 유일한 통로다
+> - **인용 검증**: [`lib/citations.ts`](../../src/lib/citations.ts) `checkCitations(answer, sourceCount)` — 답변의 `[자료 n]` 표기를 정규식으로 찾아, 인용이 아예 없는지(`missing`)와 받은 적 없는 번호를 인용했는지(`invalid`)를 본다. 파일 주석이 못 박듯 **이건 사실 검증이 아니다.** "그 자료가 정말 그 내용을 담고 있는가"는 [`lib/eval/judge.ts`](../../src/lib/eval/judge.ts) `judgeAnswer()`(심판 LLM)의 몫이고, 값싼 검사부터 거는 구조다
+> - **검증 실패 시 재생성**: [`lib/rag.ts`](../../src/lib/rag.ts) `answerQuestionReliably()` — 인용 검사에 걸리면 피드백을 붙여 **딱 한 번** 다시 생성한다(`maxAttempts = 2`). 무한 자기수정 루프를 막는 상한이다
+> - **출처 표시**: [`server/routes/ask.ts`](../../src/server/routes/ask.ts)의 `POST /ask` 응답이 `sources[]`에 `source`, `excerpt`, `distance`를 실어 보낸다
+> - **나가는 쪽 가드레일**: 같은 라우트에서 [`lib/guardrails.ts`](../../src/lib/guardrails.ts) `maskPii()`로 답변과 발췌의 개인정보를 가린다. 들어오는 쪽(`checkQuestion()`)도 같은 파일이고, 라우트 경계에서만 건다
+> - **거절 처리 (점수 임계값)**: **미구현.** 검색 점수가 낮아도 프롬프트 규칙 3번("근거가 없을 때만 답할 수 없다고 하라")에 맡기고 있다. 코드로 막으려면 `answerQuestion()`에서 `sources[0].distance`를 보고 조기 반환하면 된다
+> - **평가 (실패 모드 8번)**: [`lib/eval/metrics.ts`](../../src/lib/eval/metrics.ts) `evaluateTopK()`, `evaluateMRR()`, `measureLatency()`가 검색 품질과 지연을 재고, [`eval/answer-eval.ts`](../../src/eval/answer-eval.ts) (`npm run eval:answer`)가 `judgeAnswer()`로 답변 품질을 잰다
 
 ---
 
